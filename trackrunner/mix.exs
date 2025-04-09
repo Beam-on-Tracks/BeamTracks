@@ -4,6 +4,11 @@ defmodule Trackrunner.MixProject do
   def project do
     [
       app: :trackrunner,
+      source_url: "https://github.com/yourusername/beamtracks",
+      docs: [
+        main: "Trackrunner",
+        extras: ["README.md"]
+      ],
       version: "0.1.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -54,7 +59,8 @@ defmodule Trackrunner.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:ex_doc, "~> 0.30", only: :dev, runtime: false}
     ]
   end
 

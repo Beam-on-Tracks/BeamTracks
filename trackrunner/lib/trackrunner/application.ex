@@ -16,7 +16,12 @@ defmodule Trackrunner.Application do
       # Start a worker by calling: Trackrunner.Worker.start_link(arg)
       # {Trackrunner.Worker, arg},
       # Start to serve requests, typically the last entry
-      TrackrunnerWeb.Endpoint
+      TrackrunnerWeb.Endpoint,
+
+      # BeamTracks core
+      {Registry, keys: :unique, name: Trackrunner.AgentFleetRegistry},
+      {Registry, keys: :unique, name: :agent_node_registry},
+      {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

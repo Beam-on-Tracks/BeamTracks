@@ -14,10 +14,11 @@ defmodule TrackrunnerWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", TrackrunnerWeb do
-    pipe_through :browser
+  scope "/api", TrackrunnerWeb do
+    pipe_through :api
 
-    get "/", PageController, :home
+    get "/tool/public/:agent_id/:name", ToolController, :get_public
+    post "/ping", PingController, :ping
   end
 
   # Other scopes may use custom stacks.
