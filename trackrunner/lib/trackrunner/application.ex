@@ -7,6 +7,10 @@ defmodule Trackrunner.Application do
 
   @impl true
   def start(_type, _args) do
+    # 🧠 Add path to Gleam beam files
+    gleam_path = Path.expand("../../pulsekeeper/build/dev/erlang/ebin", __DIR__)
+    :ok = :code.add_pathz(gleam_path)
+
     children = [
       TrackrunnerWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:trackrunner, :dns_cluster_query) || :ignore},

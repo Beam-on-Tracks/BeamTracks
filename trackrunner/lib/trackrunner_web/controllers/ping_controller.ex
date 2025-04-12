@@ -11,7 +11,8 @@ defmodule TrackrunnerWeb.PingController do
       Trackrunner.Registry.register_node(params["agent_id"], %{
         ip: params["ip_hint"],
         public_tools: Map.get(params, "public_tools", %{}),
-        private_tools: Map.get(params, "private_tools", %{})
+        private_tools: Map.get(params, "private_tools", %{}),
+        tool_dependencies: Map.get(params, "tool_dependencies", %{})
       })
 
     Logger.debug("REGISTER RESULT: #{inspect(result)}")

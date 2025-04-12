@@ -12,6 +12,7 @@ defmodule Trackrunner.Types.AgentPing do
           required(:agent_id) => String.t(),
           required(:ip_hint) => String.t(),
           optional(:public_tools) => tool_map(),
-          optional(:private_tools) => tool_map()
+          optional(:private_tools) => tool_map(),
+          optional(:tool_dependencies) => tool_dependency_map()
         }
 end

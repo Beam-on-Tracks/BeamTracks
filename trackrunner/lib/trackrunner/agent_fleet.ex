@@ -21,10 +21,19 @@ defmodule Trackrunner.AgentFleet do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
+  @spec add_node(String.t(), %{
+          ip: String.t(),
+          public_tools: map(),
+          private_tools: map(),
+          tool_dependencies: map()
+        }) :: {:ok, %{uid: String.t()}} | {:error, any()}
   def add_node(agent_id, %{ip: _, public_tools: _, private_tools: _} = data) do
+    dependencies = Map.get(data, :tool_dependencies, %{})
+
     with [{fleet_pid, _}] <- Registry.lookup(AgentFleetRegistry, agent_id),
          uid <- System.unique_integer([:positive]),
          child_spec = {AgentNode, {uid, data}} do
+      Logger.debug("📦 tool_dependencies for #{agent_id}: #{inspect(dependencies)}")
       DynamicSupervisor.start_child(fleet_pid, child_spec)
       {:ok, %{uid: uid}}
     else
