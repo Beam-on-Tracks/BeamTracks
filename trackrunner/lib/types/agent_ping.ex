@@ -8,6 +8,8 @@ defmodule Trackrunner.Types.AgentPing do
 
   @type tool_map :: %{optional(String.t()) => String.t()}
 
+  @type tool_dependency_map :: %{String.t() => list(String.t())}
+
   @type t :: %{
           required(:agent_id) => String.t(),
           required(:ip_hint) => String.t(),

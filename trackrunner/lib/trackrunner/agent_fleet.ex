@@ -9,6 +9,8 @@ defmodule Trackrunner.AgentFleet do
   alias Trackrunner.AgentNode
   alias Trackrunner.AgentFleetRegistry
 
+  require Logger
+
   def start_link(agent_id) do
     name = via(agent_id)
     DynamicSupervisor.start_link(__MODULE__, %{agent_id: agent_id, next_uid: 1}, name: name)

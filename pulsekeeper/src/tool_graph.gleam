@@ -37,6 +37,41 @@ pub fn new() -> ToolGraph {
   dict.new()
 }
 
+fn tool_id_to_string(id: ToolId) -> String {
+  let ToolId(agent, name) = id
+  agent <> "/" <> name
+}
+
+pub fn validate_graph(graph: ToolGraph) -> Result(Nil, String) {
+  let node_ids = dict.keys(graph)
+  
+  // Get all dependencies from all nodes
+  let all_dependencies = graph
+  |> dict.values
+  |> list.flat_map(fn(node) {
+    case node {
+      ToolNode(_, dependencies, _, _) -> dependencies
+    }
+  })
+  
+  // Check if any dependency is missing
+  let missing_dependencies = list.filter(all_dependencies, fn(dep) {
+    !list.contains(node_ids, dep)
+  })
+  
+  // Return Ok if no missing dependencies, Error otherwise
+  case list.length(missing_dependencies) {
+    0 -> Ok(Nil)
+    _ -> {
+      let missing = list.first(missing_dependencies)
+      case missing {
+        Ok(dep) -> Error("Missing dependency: " <> tool_id_to_string(dep))
+        Error(_) -> Error("Unknown missing dependency")
+      }
+    }
+  }
+}
+
 pub fn add_node(graph: ToolGraph, node: ToolNode) -> ToolGraph {
   let ToolNode(id, _, _, _) = node
   dict.insert(graph, id, node)
@@ -51,12 +86,18 @@ pub fn all_nodes(graph: ToolGraph) -> List(ToolNode) {
 }
 
 pub fn create_workflow_dag(graph: ToolGraph) -> Result(WorkflowDAG, String) {
-  case topo_sort(graph) {
-    Ok(sorted) -> {
-      let paths = group_paths(graph, sorted)
-      Ok(WorkflowDAG(graph, paths))
-    }
+  // First, validate the graph
+  case validate_graph(graph) {
     Error(e) -> Error(e)
+    Ok(_) ->
+      // Then continue with topo sort
+      case topo_sort(graph) {
+        Ok(sorted) -> {
+          let paths = group_paths(graph, sorted)
+          Ok(WorkflowDAG(graph, paths))
+        }
+        Error(e) -> Error(e)
+      }
   }
 }
 
@@ -79,7 +120,8 @@ fn visit_nodes(
         Error(_) -> {
           let visited = dict.insert(visited, node_id, False)
           case dict.get(graph, node_id) {
-            Ok(ToolNode(_, deps, _, _)) ->
+            Ok(node) -> {
+              let ToolNode(_, deps, _, _) = node
               case visit_dependencies(graph, deps, visited, result) {
                 Error(e) -> Error(e)
                 Ok(#(visited2, result2)) -> {
@@ -87,6 +129,7 @@ fn visit_nodes(
                   visit_nodes(graph, rest, visited3, [node_id, ..result2])
                 }
               }
+            }
             Error(_) -> {
               let visited = dict.insert(visited, node_id, True)
               visit_nodes(graph, rest, visited, result)
@@ -112,7 +155,8 @@ fn visit_dependencies(
         Error(_) -> {
           let visited = dict.insert(visited, dep, False)
           case dict.get(graph, dep) {
-            Ok(ToolNode(_, subdeps, _, _)) ->
+            Ok(node) -> {
+              let ToolNode(_, subdeps, _, _) = node
               case visit_dependencies(graph, subdeps, visited, result) {
                 Error(e) -> Error(e)
                 Ok(#(visited2, result2)) -> {
@@ -120,6 +164,7 @@ fn visit_dependencies(
                   visit_dependencies(graph, rest, visited3, [dep, ..result2])
                 }
               }
+            }
             Error(_) -> {
               let visited = dict.insert(visited, dep, True)
               visit_dependencies(graph, rest, visited, result)
@@ -286,4 +331,3 @@ pub fn workflow_dag_to_string(plan: WorkflowDAG) -> String {
   workflow_dag_to_json(plan)
   |> st.to_string
 }
-

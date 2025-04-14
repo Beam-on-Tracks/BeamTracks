@@ -7,9 +7,8 @@ defmodule Trackrunner.Application do
 
   @impl true
   def start(_type, _args) do
-    # 🧠 Add path to Gleam beam files
-    gleam_path = Path.expand("../../pulsekeeper/build/dev/erlang/ebin", __DIR__)
-    :ok = :code.add_pathz(gleam_path)
+    # Load the Gleam modules from the pulsekeeper project
+    add_gleam_path()
 
     children = [
       TrackrunnerWeb.Telemetry,
@@ -40,5 +39,20 @@ defmodule Trackrunner.Application do
   def config_change(changed, _new, removed) do
     TrackrunnerWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  # Helper to add the Gleam path correctly
+  defp add_gleam_path do
+    parent_dir = Path.dirname(File.cwd!())
+
+    # Add both the pulsekeeper path and the gleam_stdlib path
+    pulsekeeper_path = Path.join(parent_dir, "pulsekeeper/build/dev/erlang/pulsekeeper/ebin")
+    stdlib_path = Path.join(parent_dir, "pulsekeeper/build/dev/erlang/gleam_stdlib/ebin")
+
+    # Add both paths
+    :code.add_pathz(String.to_charlist(pulsekeeper_path))
+    :code.add_pathz(String.to_charlist(stdlib_path))
+
+    IO.puts("Added Gleam paths: #{pulsekeeper_path} and #{stdlib_path}")
   end
 end

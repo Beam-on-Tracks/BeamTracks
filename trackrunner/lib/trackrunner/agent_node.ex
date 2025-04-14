@@ -5,9 +5,6 @@ defmodule Trackrunner.AgentNode do
   """
 
   use GenServer
-
-  alias __MODULE__
-
   # --- Public API ---
 
   def start_link(

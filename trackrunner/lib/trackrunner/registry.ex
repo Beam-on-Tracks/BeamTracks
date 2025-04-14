@@ -5,6 +5,7 @@ defmodule Trackrunner.Registry do
   """
 
   alias Trackrunner.AgentFleet
+  require Logger
 
   @spec register_node(String.t(), Trackrunner.Types.AgentPing.t()) ::
           {:ok, %{uid: integer()}} | {:error, any()}

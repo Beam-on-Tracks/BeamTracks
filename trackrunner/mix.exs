@@ -14,7 +14,8 @@ defmodule Trackrunner.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      erlc_paths: ["../pulsekeeper/build/dev/erlang/pulsekeeper/ebin"]
     ]
   end
 
@@ -30,7 +31,7 @@ defmodule Trackrunner.MixProject do
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(_), do: ["lib"]
+  defp elixirc_paths(_), do: ["lib", "../pulsekeeper/build/dev/erlang/pulsekeeper/ebin/"]
 
   # Specifies your project dependencies.
   #
@@ -79,7 +80,9 @@ defmodule Trackrunner.MixProject do
         "tailwind trackrunner --minify",
         "esbuild trackrunner --minify",
         "phx.digest"
-      ]
+      ],
+      compile: ["cmd cd ../pulsekeeper && gleam build", "compile"],
+      test: ["cmd cd ../pulsekeeper && gleam build", "test"]
     ]
   end
 end

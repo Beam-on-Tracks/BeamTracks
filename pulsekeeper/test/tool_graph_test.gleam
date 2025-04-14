@@ -87,3 +87,19 @@ pub fn test_detect_cycle_in_deep_graph() {
     Error(e) -> should.equal(True, string.contains(e, "Cycle detected"))
   }
 }
+
+pub fn test_create_workflow_dag_invalid() {
+  let id1 = tool_graph.ToolId("agentX", "z")
+  let id2 = tool_graph.ToolId("agentY", "missing")
+  let node = tool_graph.ToolNode(id1, [id2], "in", "out")
+  let graph = tool_graph.add_node(tool_graph.new(), node)
+
+  case tool_graph.create_workflow_dag(graph) {
+    Ok(_) ->
+      should.equal(True, False) // This should NOT happen
+
+    Error(_) ->
+      should.equal(True, True) // This is expected
+  }
+}
+

@@ -1,7 +1,6 @@
 defmodule TrackrunnerWeb.PingController do
   use TrackrunnerWeb, :controller
 
-  alias Trackrunner.Registry
   require Logger
 
   def ping(conn, params) do
