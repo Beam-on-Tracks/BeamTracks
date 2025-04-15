@@ -3,10 +3,13 @@ defmodule TrackrunnerWeb.ToolControllerTest do
   use TrackrunnerWeb.ConnCase
 
   setup do
-    start_supervised!({Trackrunner.AgentFleet, "agentzero"})
+    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
+    # ✅ THIS LINE
+    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agentzero")
 
     {:ok, _} =
       Trackrunner.AgentFleet.add_node("agentzero", %{
+        agent_id: "agentzero",
         ip: "localhost:5001",
         public_tools: %{"voice" => "/voice"},
         private_tools: %{},
@@ -15,7 +18,42 @@ defmodule TrackrunnerWeb.ToolControllerTest do
 
     start_supervised!(Pulsekeeper.Server)
 
+    # on_exit(fn ->
+    #   # Cleanup logic here
+    #   IO.puts("🧼 Cleaning up agent_1")
+    #   # You can optionally terminate it manually:
+    #   case Registry.lookup(Trackrunner.AgentFleetRegistry, "agent_1") do
+    #     [{pid, _}] ->
+    #       DynamicSupervisor.terminate_child(Trackrunner.FleetSupervisor, pid)
+    #
+    #     _ ->
+    #       :ok
+    #   end
+    # end)
+    #
     :ok
+  end
+
+  test "can register tool and dispatch to agent node" do
+    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
+    Trackrunner.ToolRegistry.register("agent_1", "test:echo")
+
+    {:ok, _} =
+      Trackrunner.AgentFleet.add_node("agent_1", %{
+        agent_id: "agent_1",
+        ip: "127.0.0.1",
+        public_tools: %{"test:echo" => "available"},
+        private_tools: %{},
+        tool_dependencies: %{}
+      })
+
+    # ✅ Pass self() in the meta to receive the message
+    Trackrunner.WorkflowRuntime.handle_tool_node(
+      %{id: "test:echo", input: "hello world", output: ""},
+      %{origin: :test, id: "u1", notify: self()}
+    )
+
+    assert_receive {:executed_fake_tool, "hello world"}, 1000
   end
 
   describe "GET /tool/public/:agent_id/:name" do

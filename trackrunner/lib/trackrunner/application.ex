@@ -24,7 +24,10 @@ defmodule Trackrunner.Application do
       # BeamTracks core
       {Registry, keys: :unique, name: Trackrunner.AgentFleetRegistry},
       {Registry, keys: :unique, name: :agent_node_registry},
-      {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor}
+      {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor},
+      Trackrunner.ToolRegistry,
+      Trackrunner.WorkflowRuntime,
+      Trackrunner.FleetScoreCache
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
