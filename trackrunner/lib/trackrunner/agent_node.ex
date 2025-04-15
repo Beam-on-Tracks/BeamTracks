@@ -5,6 +5,8 @@ defmodule Trackrunner.AgentNode do
   """
 
   use GenServer
+
+  alias Trackrunner.RelayContext
   # --- Public API ---
 
   def start_link({uid, data, caller}) do
@@ -48,12 +50,11 @@ defmodule Trackrunner.AgentNode do
     {:noreply, %{state | last_seen: DateTime.utc_now()}}
   end
 
-  def handle_cast({:execute_tool, tool_node, meta}, state) do
+  def handle_cast({:execute_tool, tool_node, %RelayContext{} = context}, state) do
     IO.puts("🛠️ AgentNode executing #{tool_node.id} with input: #{tool_node.input}")
 
-    if Map.has_key?(meta, :notify) do
-      send(meta.notify, {:executed_fake_tool, tool_node.input})
-    end
+    # In the future: this may run actual code or call a toolchain
+    RelayContext.broadcast(context, {:executed_tool, tool_node.id, tool_node.input})
 
     {:noreply, state}
   end

@@ -4,7 +4,6 @@ defmodule TrackrunnerWeb.ToolControllerTest do
 
   setup do
     {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
-    # ✅ THIS LINE
     {:ok, _} = Trackrunner.AgentFleet.ensure_started("agentzero")
 
     {:ok, _} =
@@ -36,24 +35,31 @@ defmodule TrackrunnerWeb.ToolControllerTest do
 
   test "can register tool and dispatch to agent node" do
     {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
-    Trackrunner.ToolRegistry.register("agent_1", "test:echo")
+    tool_node_id = "test:echo"
+    Trackrunner.ToolRegistry.register("agent_1", tool_node_id)
 
     {:ok, _} =
       Trackrunner.AgentFleet.add_node("agent_1", %{
         agent_id: "agent_1",
         ip: "127.0.0.1",
-        public_tools: %{"test:echo" => "available"},
+        public_tools: %{tool_node_id => "available"},
         private_tools: %{},
         tool_dependencies: %{}
       })
 
+    context = %Trackrunner.RelayContext{
+      origin: :test,
+      workflow_id: "u1",
+      notify_list: [{:pid, self()}]
+    }
+
     # ✅ Pass self() in the meta to receive the message
     Trackrunner.WorkflowRuntime.handle_tool_node(
-      %{id: "test:echo", input: "hello world", output: ""},
-      %{origin: :test, id: "u1", notify: self()}
+      %{id: tool_node_id, input: "hello world", output: ""},
+      context
     )
 
-    assert_receive {:executed_fake_tool, "hello world"}, 1000
+    assert_receive {:executed_tool, ^tool_node_id, "hello world"}, 1000
   end
 
   describe "GET /tool/public/:agent_id/:name" do
