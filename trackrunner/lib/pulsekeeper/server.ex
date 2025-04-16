@@ -79,4 +79,12 @@ defmodule Pulsekeeper.Server do
         {:reply, {:error, reason}, state}
     end
   end
+
+  def get_last_seen(agent_id, uid) do
+    GenServer.call(__MODULE__, {:get, {agent_id, uid}})
+  end
+
+  def handle_call({:get, key}, _from, state) do
+    {:reply, Map.get(state, key, nil), state}
+  end
 end

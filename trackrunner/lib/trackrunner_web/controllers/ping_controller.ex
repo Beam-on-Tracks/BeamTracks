@@ -3,14 +3,16 @@ defmodule TrackrunnerWeb.PingController do
 
   require Logger
 
+  alias Trackrunner.ToolContract
+
   def ping(conn, params) do
     Logger.debug("PING PARAMS: #{inspect(params)}")
 
     result =
       Trackrunner.Registry.register_node(params["agent_id"], %{
         ip: params["ip_hint"],
-        public_tools: Map.get(params, "public_tools", %{}),
-        private_tools: Map.get(params, "private_tools", %{}),
+        public_tools: parse_tools(Map.get(params, "public_tools", [])),
+        private_tools: parse_tools(Map.get(params, "private_tools", [])),
         tool_dependencies: Map.get(params, "tool_dependencies", %{})
       })
 
@@ -29,4 +31,39 @@ defmodule TrackrunnerWeb.PingController do
       Logger.error("🔥 CRASH in ping: #{inspect(err)}")
       json(conn, %{error: Exception.message(err)})
   end
+
+  defp parse_tools([]), do: %{}
+
+  defp parse_tools(tool_list) when is_list(tool_list) do
+    Enum.reduce(tool_list, %{}, fn tool, acc ->
+      name = tool["name"] || tool[:name]
+      type = tool["type"] || tool[:type] || "MOCK"
+      target = tool["target"] || tool[:target] || ""
+      inputs = tool["input"] || tool[:input] || %{}
+      outputs = tool["output"] || tool[:output] || %{}
+
+      {mode, verb} = parse_mode(type)
+
+      contract = %ToolContract{
+        name: name,
+        mode: mode,
+        target: target,
+        inputs: inputs,
+        outputs: outputs,
+        verb: verb
+      }
+
+      Map.put(acc, name, contract)
+    end)
+  end
+
+  defp parse_mode("HTTP:GET"), do: {:http, :get}
+  defp parse_mode("HTTP:POST"), do: {:http, :post}
+  defp parse_mode("HTTP:PUT"), do: {:http, :put}
+  defp parse_mode("HTTP:DELETE"), do: {:http, :delete}
+  defp parse_mode("MOCK"), do: {:mock, nil}
+  defp parse_mode("FUNCTION"), do: {:function, nil}
+  defp parse_mode("SCRIPT"), do: {:script, nil}
+  defp parse_mode("FLAME"), do: {:flame, nil}
+  defp parse_mode(_), do: {:mock, nil}
 end
