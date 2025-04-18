@@ -17,9 +17,14 @@ defmodule TrackrunnerWeb.Router do
   scope "/api", TrackrunnerWeb do
     pipe_through :api
 
+    get "/", PageController, :home
     get "/tool/public/:agent_id/:name", ToolController, :get_public
     post "/ping", PingController, :ping
   end
+
+  socket "/socket", TrackrunnerWeb.BeaconSocket,
+    websocket: true,
+    longpoll: false
 
   # Other scopes may use custom stacks.
   # scope "/api", TrackrunnerWeb do

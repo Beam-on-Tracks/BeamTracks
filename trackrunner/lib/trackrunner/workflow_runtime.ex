@@ -117,5 +117,10 @@ defmodule Trackrunner.WorkflowRuntime do
         end
     end
   end
-end
 
+  def dispatch_event(cat, evt, payload) do
+    Beacon.publish(cat, evt, payload)
+    # …plus your FleetScoreCache logic later
+    {:ok, :dispatched}
+  end
+end

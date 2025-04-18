@@ -7,7 +7,12 @@ defmodule Trackrunner.Registry do
   alias Trackrunner.AgentFleet
   require Logger
 
-  @spec register_node(String.t(), Trackrunner.Types.AgentPing.t()) ::
+  @spec register_node(String.t(), %{
+          ip: String.t(),
+          public_tools: map(),
+          private_tools: map(),
+          tool_dependencies: map()
+        }) ::
           {:ok, %{uid: integer()}} | {:error, any()}
   def register_node(agent_id, node_data) do
     case Registry.lookup(Trackrunner.AgentFleetRegistry, agent_id) do
@@ -30,3 +35,4 @@ defmodule Trackrunner.Registry do
     AgentFleet.find_tool(agent_id, tool_name)
   end
 end
+

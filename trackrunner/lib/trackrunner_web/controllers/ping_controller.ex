@@ -13,7 +13,8 @@ defmodule TrackrunnerWeb.PingController do
         ip: params["ip_hint"],
         public_tools: parse_tools(Map.get(params, "public_tools", [])),
         private_tools: parse_tools(Map.get(params, "private_tools", [])),
-        tool_dependencies: Map.get(params, "tool_dependencies", %{})
+        tool_dependencies: Map.get(params, "tool_dependencies", %{}),
+        agent_channels: parse_channels(Map.get(params, "agent_channels", %{}))
       })
 
     Logger.debug("REGISTER RESULT: #{inspect(result)}")
@@ -54,6 +55,22 @@ defmodule TrackrunnerWeb.PingController do
       }
 
       Map.put(acc, name, contract)
+    end)
+  end
+
+  defp parse_channels(list) when is_list(list) do
+    Enum.map(list, fn %{
+                        "category" => cat,
+                        "identity" => id,
+                        "subscription" => subs,
+                        "publish" => pubs
+                      } ->
+      %WebsocketContract{
+        category: cat,
+        identity: id,
+        subscriptions: subs,
+        publishes: pubs
+      }
     end)
   end
 

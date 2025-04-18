@@ -38,21 +38,20 @@ defmodule Trackrunner.AgentFleet do
           public_tools: map(),
           private_tools: map(),
           tool_dependencies: map()
-        }) :: {:ok, %{uid: String.t()}} | {:error, any()}
-  def add_node(agent_id, %{ip: _, public_tools: _, private_tools: _, tool_dependencies: _} = data) do
-    dependencies = Map.get(data, :tool_dependencies, %{})
+        }) :: {:ok, %{uid: integer()}} | {:error, any()}
+  def add_node(agent_id, data) do
+    uid = System.unique_integer([:positive])
+    caller = self()
 
     with [{fleet_pid, _}] <- Registry.lookup(AgentFleetRegistry, agent_id),
-         uid <- System.unique_integer([:positive]),
-         caller <- self(),
-         child_spec = {AgentNode, {uid, data, caller}},
+         child_spec = {AgentNode, {uid, Map.put(data, :agent_id, agent_id), caller}},
          {:ok, _child} <- DynamicSupervisor.start_child(fleet_pid, child_spec),
-         {:ok, _pid} <- wait_until_registered({agent_id, Map.keys(data.public_tools) |> hd()}) do
-      Logger.debug("📦 tool_dependencies for #{agent_id}: #{inspect(dependencies)}")
+         {:ok, _pid} <- wait_until_registered({agent_id, uid}) do
+      Logger.debug("📦 Node registered for #{agent_id} with tools: #{Map.keys(data.public_tools)}")
       {:ok, %{uid: uid}}
     else
       error ->
-        IO.warn("❌ add_node failed at some step: #{inspect(error)}")
+        IO.warn("❌ add_node failed: #{inspect(error)}")
         {:error, :fleet_not_found}
     end
   end
