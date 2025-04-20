@@ -22,12 +22,12 @@ defmodule Trackrunner.Application do
       TrackrunnerWeb.Endpoint,
 
       # BeamTracks core
-      {Registry, keys: :unique, name: Trackrunner.AgentFleetRegistry},
+      {Registry, keys: :unique, name: Trackrunner.Agent.FleetRegistry},
       {Registry, keys: :unique, name: :agent_node_registry},
       {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor},
       {DynamicSupervisor, strategy: :one_for_one, name: BeaconSupervisor},
       {Trackrunner.WorkflowRuntime, []},
-      {Trackrunner.ToolRegistry, []},
+      {Trackrunner.Tool.Registry, []},
       Trackrunner.FleetScoreCache,
       Trackrunner.AgentChannelManager
     ]

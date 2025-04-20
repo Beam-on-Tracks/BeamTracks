@@ -1,4 +1,4 @@
-defmodule Trackrunner.AgentFleet do
+defmodule Trackrunner.Agent.Fleet do
   @moduledoc """
   Supervises a group of AgentNodes under a single agent_id.
   Responsible for assigning unique UIDs and spinning up new nodes.
@@ -7,7 +7,7 @@ defmodule Trackrunner.AgentFleet do
   use DynamicSupervisor
 
   alias Trackrunner.AgentNode
-  alias Trackrunner.AgentFleetRegistry
+  alias Trackrunner.Agent.FleetRegistry
 
   require Logger
 
@@ -17,14 +17,14 @@ defmodule Trackrunner.AgentFleet do
   end
 
   def via(agent_id),
-    do: {:via, Registry, {AgentFleetRegistry, agent_id}}
+    do: {:via, Registry, {FleetRegistry, agent_id}}
 
   def init(_init_arg) do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
   def ensure_started(agent_id) do
-    case Registry.lookup(AgentFleetRegistry, agent_id) do
+    case Registry.lookup(FleetRegistry, agent_id) do
       [{_pid, _}] ->
         {:ok, :already_started}
 

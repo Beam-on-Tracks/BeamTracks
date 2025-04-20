@@ -6,7 +6,8 @@ defmodule Trackrunner.AgentNode do
 
   use GenServer
 
-  alias Trackrunner.{WorkflowRuntime, RelayContext, ToolContract, ToolValidator}
+  alias Trackrunner.{WorkflowRuntime, RelayContext}
+  alias Trackrunner.Tool.{Contract, Validator}
 
   @type tool_id :: String.t()
   @type uid :: integer()
@@ -14,8 +15,8 @@ defmodule Trackrunner.AgentNode do
   @type state :: %{
           uid: uid(),
           agent_id: String.t(),
-          public_tools: %{tool_id() => ToolContract.t()},
-          private_tools: %{tool_id() => ToolContract.t()},
+          public_tools: %{tool_id() => Contract.t()},
+          private_tools: %{tool_id() => Contract.t()},
           last_seen: DateTime.t()
         }
 
@@ -64,7 +65,7 @@ defmodule Trackrunner.AgentNode do
   @impl true
   def handle_call({:lookup_public, name}, _from, state) do
     case Map.get(state.public_tools, name) do
-      %ToolContract{target: url} ->
+      %Contract{target: url} ->
         {:reply, {:ok, url}, state}
 
       url when is_binary(url) ->
@@ -100,8 +101,8 @@ defmodule Trackrunner.AgentNode do
         Map.get(state.private_tools, tool_node.id)
 
     case contract do
-      %ToolContract{} = c ->
-        case ToolValidator.validate_input(c, tool_node.input) do
+      %Contract{} = c ->
+        case Validator.validate_input(c, tool_node.input) do
           :ok ->
             do_execute_tool(c, tool_node, ctx)
 
@@ -122,7 +123,7 @@ defmodule Trackrunner.AgentNode do
 
   ## Private helpers
 
-  defp do_execute_tool(%ToolContract{mode: {:http, verb}, target: url}, tool_node, ctx) do
+  defp do_execute_tool(%Contract{mode: {:http, verb}, target: url}, tool_node, ctx) do
     Task.start(fn ->
       headers = [{"Content-Type", "application/json"}]
       body = Jason.encode!(tool_node.input)
@@ -140,7 +141,7 @@ defmodule Trackrunner.AgentNode do
     end)
   end
 
-  defp do_execute_tool(%ToolContract{mode: {:mock, _}}, tool_node, ctx) do
+  defp do_execute_tool(%Contract{mode: {:mock, _}}, tool_node, ctx) do
     RelayContext.broadcast(ctx, {:executed_tool, tool_node.id, %{"mock" => "response"}})
   end
 

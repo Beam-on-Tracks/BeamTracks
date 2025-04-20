@@ -4,12 +4,14 @@ defmodule TrackrunnerWeb.ToolControllerTest do
 
   alias Trackrunner.WorkflowRuntime
 
+  
+
   setup do
-    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
-    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agentzero")
+    {:ok, _} = Trackrunner.Agent.Fleet.ensure_started("agent_1")
+    {:ok, _} = Trackrunner.Agent.Fleet.ensure_started("agentzero")
 
     {:ok, _} =
-      Trackrunner.AgentFleet.add_node("agentzero", %{
+      Trackrunner.Agent.Fleet.add_node("agentzero", %{
         agent_id: "agentzero",
         ip: "localhost:5001",
         public_tools: %{"voice" => "/voice"},
@@ -23,7 +25,7 @@ defmodule TrackrunnerWeb.ToolControllerTest do
     #   # Cleanup logic here
     #   IO.puts("🧼 Cleaning up agent_1")
     #   # You can optionally terminate it manually:
-    #   case Registry.lookup(Trackrunner.AgentFleetRegistry, "agent_1") do
+    #   case Registry.lookup(Trackrunner.Agent.FleetRegistry, "agent_1") do
     #     [{pid, _}] ->
     #       DynamicSupervisor.terminate_child(Trackrunner.FleetSupervisor, pid)
     # 
@@ -36,12 +38,12 @@ defmodule TrackrunnerWeb.ToolControllerTest do
   end
 
   test "can register tool and dispatch to agent node" do
-    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
+    {:ok, _} = Trackrunner.Agent.Fleet.ensure_started("agent_1")
     tool_node_id = "test:echo"
-    Trackrunner.ToolRegistry.register("agent_1", tool_node_id)
+    Trackrunner.Tool.Registry.register("agent_1", tool_node_id)
 
     {:ok, _} =
-      Trackrunner.AgentFleet.add_node("agent_1", %{
+      Trackrunner.Agent.Fleet.add_node("agent_1", %{
         agent_id: "agent_1",
         ip: "127.0.0.1",
         public_tools: %{tool_node_id => "available"},

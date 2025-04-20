@@ -10,7 +10,8 @@ defmodule Trackrunner.WorkflowRuntime do
   """
 
   use GenServer
-  alias Trackrunner.{ToolRegistry, RelayContext, AgentChannelManager, FleetScoreCache}
+  alias Trackrunner.{RelayContext, AgentChannelManager, FleetScoreCache}
+  alias Trackrunner.Tool.Registry, as: ToolRegistry
   alias TrackrunnerWeb.Endpoint
 
   @queue_table :workflow_runtime_queue

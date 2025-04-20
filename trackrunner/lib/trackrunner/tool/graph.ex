@@ -1,4 +1,4 @@
-defmodule Trackrunner.ToolGraph do
+defmodule Trackrunner.Tool.Graph do
   @moduledoc """
   Elixir interface to the type-safe tool_graph module in Gleam
   """
@@ -56,4 +56,3 @@ defmodule Trackrunner.ToolGraph do
 
   def next_nodes(dag, current_id), do: call_graph_function(:next_nodes, [dag, current_id])
 end
-

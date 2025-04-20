@@ -1,9 +1,9 @@
-defmodule Trackrunner.ToolValidator do
+defmodule Trackrunner.Tool.Validator do
   @moduledoc """
   Validates tool input against the contract's input schema using simple type checks.
   """
 
-  alias Trackrunner.ToolContract
+  alias Trackrunner.Tool.Contract, as: ToolContract
 
   @spec validate_input(ToolContract.t(), map()) :: :ok | {:error, any()}
   def validate_input(%ToolContract{inputs: schema}, data) when is_map(schema) do
@@ -47,4 +47,3 @@ defmodule Trackrunner.ToolValidator do
   defp valid_type?(_val, "any"), do: true
   defp valid_type?(_val, _), do: true
 end
-

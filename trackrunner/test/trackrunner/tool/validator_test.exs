@@ -1,6 +1,9 @@
 defmodule Trackrunner.ToolValidatorTest do
   use ExUnit.Case
-  alias Trackrunner.{ToolValidator, ToolContract}
+ 
+  alias Trackrunner.Tool.Contract, as: ToolContract
+
+  alias Trackrunner.Tool.Validator, as: ToolValidator
 
   test "validates correct input" do
     contract = %ToolContract{

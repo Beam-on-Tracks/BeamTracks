@@ -47,7 +47,7 @@ defmodule Pulsekeeper.Server do
 
   @impl true
   def handle_call({:register_dag, graph}, _from, _state) do
-    case Trackrunner.ToolGraph.create_workflow_dag(graph) do
+    case Trackrunner.Tool.Graph.create_workflow_dag(graph) do
       {:ok, dag} ->
         {:reply, :ok, %{workflow_dag: dag, registered_tools: MapSet.new()}}
 
@@ -61,7 +61,7 @@ defmodule Pulsekeeper.Server do
   end
 
   def handle_call({:next_nodes, current_id}, _from, %{workflow_dag: dag} = state) do
-    next = Trackrunner.ToolGraph.next_nodes(dag, current_id)
+    next = Trackrunner.Tool.Graph.next_nodes(dag, current_id)
     {:reply, next, state}
   end
 
@@ -70,7 +70,7 @@ defmodule Pulsekeeper.Server do
   end
 
   def handle_call({:sync_graph, tool_nodes}, _from, state) do
-    case Trackrunner.ToolGraph.create_workflow_dag(tool_nodes) do
+    case Trackrunner.Tool.Graph.create_workflow_dag(tool_nodes) do
       {:ok, new_dag} ->
         {:reply, :ok, %{state | workflow_dag: new_dag, registered_tools: MapSet.new()}}
 

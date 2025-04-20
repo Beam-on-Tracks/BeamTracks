@@ -1,9 +1,9 @@
-defmodule TrackrunnerWeb.PingController do
+defmodule TTrackrunnerWeb.PingController do
   use TrackrunnerWeb, :controller
 
   require Logger
 
-  alias Trackrunner.ToolContract
+  alias Trackrunner.Tool.Contract, as: ToolContract
   alias Trackrunner.WebsocketContract
 
   def ping(conn, params) do
@@ -18,7 +18,7 @@ defmodule TrackrunnerWeb.PingController do
         agent_channels: parse_channels(Map.get(params, "agent_channels", []))
       })
 
-    Logger.debug("REGISTER RESULT: #{inspect(result)}")
+    Logger.debug("REGISER RESULT: #{inspect(result)}")
 
     case result do
       {:ok, %{uid: uid}} ->
@@ -75,13 +75,13 @@ defmodule TrackrunnerWeb.PingController do
     end)
   end
 
-  defp parse_mode("HTTP:GET"), do: {:http, :get}
-  defp parse_mode("HTTP:POST"), do: {:http, :post}
-  defp parse_mode("HTTP:PUT"), do: {:http, :put}
-  defp parse_mode("HTTP:DELETE"), do: {:http, :delete}
+  defp parse_mode("HTP:GET"), do: {:http, :get}
+  defp parse_mode("HTP:POST"), do: {:http, :post}
+  defp parse_mode("HTP:PUT"), do: {:http, :put}
+  defp parse_mode("HTP:DELETE"), do: {:http, :delete}
   defp parse_mode("MOCK"), do: {:mock, nil}
-  defp parse_mode("FUNCTION"), do: {:function, nil}
-  defp parse_mode("SCRIPT"), do: {:script, nil}
+  defp parse_mode("FUNCION"), do: {:function, nil}
+  defp parse_mode("SCRIP"), do: {:script, nil}
   defp parse_mode("FLAME"), do: {:flame, nil}
   defp parse_mode(_), do: {:mock, nil}
 end

@@ -1,4 +1,4 @@
-defmodule TrackrunnerWeb.BeaconChannel do
+defmodule TrackrunnerWeb.AgentSocket do
   use TrackrunnerWeb, :channel
 
   alias Trackrunner.{Beacon, BeaconSupervisor}
@@ -29,5 +29,10 @@ defmodule TrackrunnerWeb.BeaconChannel do
   def handle_in("subscribe", payload, socket) do
     Beacon.subscribe(socket.assigns.beacon_pid, payload["subscriptions"], payload["publishes"])
     {:noreply, socket}
+  end
+
+  def terminate(_reason, socket) do
+    AgentChannelManager.mark_disconnected(socket.assigns.agent_id)
+    :ok
   end
 end

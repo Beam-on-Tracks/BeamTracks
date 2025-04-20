@@ -6,7 +6,7 @@ defmodule Trackrunner.WorkflowRuntimeTest do
   alias Trackrunner.TestSupport
 
   setup do
-    TestSupport.ensure_registry_started(Trackrunner.AgentFleetRegistry)
+    TestSupport.ensure_registry_started(Trackrunner.Agent.FleetRegistry)
     TestSupport.ensure_registry_started(:agent_node_registry)
 
     TestSupport.ensure_process_started(
@@ -14,7 +14,7 @@ defmodule Trackrunner.WorkflowRuntimeTest do
       {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor}
     )
 
-    TestSupport.ensure_process_started(Trackrunner.ToolRegistry, Trackrunner.ToolRegistry)
+    TestSupport.ensure_process_started(Trackrunner.Tool.Registry, Trackrunner.Tool.Registry)
     TestSupport.ensure_process_started(Trackrunner.WorkflowRuntime, Trackrunner.WorkflowRuntime)
 
     :ok
@@ -38,11 +38,11 @@ defmodule Trackrunner.WorkflowRuntimeTest do
     Process.sleep(100)
 
     # Start agent fleet and register tool
-    {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
-    Trackrunner.ToolRegistry.register("agent_1", tool_id)
+    {:ok, _} = Trackrunner.Agent.Fleet.ensure_started("agent_1")
+    Trackrunner.Tool.Registry.register("agent_1", tool_id)
 
     {:ok, _} =
-      Trackrunner.AgentFleet.add_node("agent_1", %{
+      Trackrunner.Agent.Fleet.add_node("agent_1", %{
         agent_id: "agent_1",
         ip: "127.0.0.1",
         public_tools: %{tool_id => "available"},

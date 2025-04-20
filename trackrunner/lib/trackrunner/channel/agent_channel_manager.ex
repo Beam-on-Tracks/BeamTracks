@@ -13,13 +13,14 @@ defmodule Trackrunner.AgentChannelManager do
       }
     }
 
-  v1.0 TODO: 
-  - Integrate withe FleetScoreCache in order make sure the contracts are selected
-  fairly.
+  v1.0 TODO:
+  - implemnet warm pool scaling 
   """
 
   use GenServer
   alias Trackrunner.WebsocketContract
+
+  require Logger
 
   # Public API
 
@@ -63,6 +64,19 @@ defmodule Trackrunner.AgentChannelManager do
   @spec lookup_listeners(String.t(), String.t()) :: [{String.t(), WebsocketContract.t()}]
   def lookup_listeners(category, event) when is_binary(category) and is_binary(event) do
     GenServer.call(__MODULE__, {:lookup_listeners, category, event})
+  end
+
+  def mark_connected(agent_id, socket_pid) do
+    GenServer.cast(__MODULE__, {:mark_connected, agent_id, socket_pid})
+  end
+
+  def mark_disconnected(agent_id) do
+    GenServer.cast(__MODULE__, {:mark_disconnected, agent_id})
+  end
+
+  # Called directly, no call/cast
+  def lookup_subscribers(category, event) do
+    :ets.lookup(:agent_channels, {category, event})
   end
 
   # GenServer callbacks
@@ -125,5 +139,22 @@ defmodule Trackrunner.AgentChannelManager do
       end)
 
     {:reply, listeners, state}
+  end
+
+  # Inside handle_cast
+  def handle_cast({:mark_connected, agent_id, pid}, state) do
+    updated =
+      Map.update(state, agent_id, %{contracts: [], socket_pid: pid}, fn entry ->
+        %{entry | socket_pid: pid}
+      end)
+
+    Logger.info("📡 #{agent_id} joined the warm pool")
+    {:noreply, updated}
+  end
+
+  def handle_cast({:mark_disconnected, agent_id}, state) do
+    updated = Map.delete(state, agent_id)
+    Logger.info("❌ #{agent_id} left the warm pool")
+    {:noreply, updated}
   end
 end

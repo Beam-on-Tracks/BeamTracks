@@ -1,4 +1,4 @@
-defmodule Trackrunner.ToolRegistry do
+defmodule Trackrunner.Tool.Registry do
   @moduledoc """
   Registers which agents can handle which tools.
   """

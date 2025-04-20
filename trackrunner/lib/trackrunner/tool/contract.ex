@@ -1,9 +1,9 @@
-defmodule Trackrunner.ToolContract do
+defmodule Trackrunner.Tool.Contract do
   @moduledoc """
   Describes how a tool should be executed.
 
-  ToolContracts are passed around to define what kind of tool is being invoked
-  (HTTP service, local function, shell command, mock), where to send the input,
+  oolContracts are passed around to define what kind of tool is being invoked
+  (HTP service, local function, shell command, mock), where to send the input,
   and what we expect in terms of output behavior.
   """
   @enforce_keys [:name, :mode, :target, :inputs, :outputs]
