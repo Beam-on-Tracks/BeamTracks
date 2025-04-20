@@ -4,6 +4,7 @@ defmodule TrackrunnerWeb.PingController do
   require Logger
 
   alias Trackrunner.ToolContract
+  alias Trackrunner.WebsocketContract
 
   def ping(conn, params) do
     Logger.debug("PING PARAMS: #{inspect(params)}")
@@ -14,7 +15,7 @@ defmodule TrackrunnerWeb.PingController do
         public_tools: parse_tools(Map.get(params, "public_tools", [])),
         private_tools: parse_tools(Map.get(params, "private_tools", [])),
         tool_dependencies: Map.get(params, "tool_dependencies", %{}),
-        agent_channels: parse_channels(Map.get(params, "agent_channels", %{}))
+        agent_channels: parse_channels(Map.get(params, "agent_channels", []))
       })
 
     Logger.debug("REGISTER RESULT: #{inspect(result)}")

@@ -1,126 +1,150 @@
 defmodule Trackrunner.AgentNode do
   @moduledoc """
-  Represents a live instance (node) of an agent in the BeamTracks system.
-  Holds tool metadata and responds to tool discovery queries.
+  Represents a live instance of an agent.  
+  Handles tool discovery, validation, and execution.
   """
 
   use GenServer
 
-  alias Trackrunner.RelayContext
-  alias Trackrunner.ToolContract
-  # --- Public API ---
+  alias Trackrunner.{WorkflowRuntime, RelayContext, ToolContract, ToolValidator}
 
-  def start_link({uid, data, caller}) do
-    name = {:via, Registry, {:agent_node_registry, {data.agent_id, tool_id}}}
-    GenServer.start_link(__MODULE__, {uid, data, caller}, name: name)
+  @type tool_id :: String.t()
+  @type uid :: integer()
+
+  @type state :: %{
+          uid: uid(),
+          agent_id: String.t(),
+          public_tools: %{tool_id() => ToolContract.t()},
+          private_tools: %{tool_id() => ToolContract.t()},
+          last_seen: DateTime.t()
+        }
+
+  ## Public API
+
+  @spec start_link({uid(), %{agent_id: String.t(), public_tools: map(), private_tools: map()}}) ::
+          GenServer.on_start()
+  def start_link({uid, %{agent_id: agent_id, public_tools: pub, private_tools: priv}}) do
+    [first_tool | _] = Map.keys(pub)
+    name = {:via, Registry, {:agent_node_registry, {agent_id, first_tool}}}
+
+    initial_state = %{
+      uid: uid,
+      agent_id: agent_id,
+      public_tools: pub,
+      private_tools: priv,
+      last_seen: DateTime.utc_now()
+    }
+
+    GenServer.start_link(__MODULE__, initial_state, name: name)
   end
 
-  def init({_uid, data, caller}) do
-    # Send notification back to parent (AgentFleet or caller)
-    send(caller, {:agent_node_ready, self()})
-    {:ok, data}
+  @spec lookup_public_tool(pid() | atom(), tool_id()) ::
+          {:ok, String.t()} | {:error, :not_found}
+  def lookup_public_tool(node, name), do: GenServer.call(node, {:lookup_public, name})
+
+  @spec lookup_private_tool(pid() | atom(), tool_id()) ::
+          {:ok, String.t()} | {:error, :not_found}
+  def lookup_private_tool(node, name), do: GenServer.call(node, {:lookup_private, name})
+
+  @spec update_last_seen(pid() | atom()) :: :ok
+  def update_last_seen(node), do: GenServer.cast(node, :update_last_seen)
+
+  ## GenServer Callbacks
+
+  @impl true
+  def init(state) do
+    # Announce availability for each public tool
+    for tool_id <- Map.keys(state.public_tools) do
+      WorkflowRuntime.notify_node_ready(state.agent_id, tool_id)
+    end
+
+    {:ok, state}
   end
 
-  def via(uid),
-    do: {:via, Registry, {:agent_node_registry, uid}}
-
-  def lookup_public_tool(node_pid_or_name, tool_name) do
-    GenServer.call(node_pid_or_name, {:lookup_public, tool_name})
-  end
-
-  def lookup_private_tool(pid, tool_name) do
-    GenServer.call(pid, {:lookup_private, tool_name})
-  end
-
-  def update_last_seen(node_pid_or_name) do
-    GenServer.cast(node_pid_or_name, :update_last_seen)
-  end
-
-  defp do_execute_tool(%ToolContract{mode: {:http, verb}, target: url}, tool_node, context) do
-    Task.start(fn ->
-      headers = [{"Content-Type", "application/json"}]
-      body = Jason.encode!(tool_node.input)
-
-      case HTTPoison.request(to_string(verb), url, body, headers, []) do
-        {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-          RelayContext.broadcast(context, {:executed_tool, tool_node.id, Jason.decode!(body)})
-
-        {:ok, %HTTPoison.Response{status_code: code, body: body}} ->
-          RelayContext.broadcast(
-            context,
-            {:tool_error, tool_node.id, %{status: code, body: body}}
-          )
-
-        {:error, err} ->
-          RelayContext.broadcast(context, {:tool_error, tool_node.id, %{error: inspect(err)}})
-      end
-    end)
-  end
-
-  defp do_execute_tool(%ToolContract{mode: {:mock, _}}, tool_node, context) do
-    RelayContext.broadcast(context, {:executed_tool, tool_node.id, %{"mock" => "response"}})
-  end
-
-  defp do_execute_tool(_, tool_node, context) do
-    RelayContext.broadcast(context, {:tool_error, tool_node.id, "Unsupported tool mode"})
-  end
-
-  # --- GenServer Callbacks ---
-
-  def init(state), do: {:ok, state}
-
+  @impl true
   def handle_call({:lookup_public, name}, _from, state) do
     case Map.get(state.public_tools, name) do
-      nil -> {:reply, :not_found, state}
-      %ToolContract{target: url} -> {:reply, {:ok, url}, state}
+      %ToolContract{target: url} ->
+        {:reply, {:ok, url}, state}
+
+      url when is_binary(url) ->
+        {:reply, {:ok, url}, state}
+
+      _ ->
+        {:reply, {:error, :not_found}, state}
     end
   end
 
-  def handle_cast(:update_last_seen, state) do
-    {:noreply, %{state | last_seen: DateTime.utc_now()}}
-  end
-
+  @impl true
   def handle_call({:lookup_private, name}, _from, state) do
     case Map.get(state.private_tools, name) do
-      nil -> {:reply, :not_found, state}
-      %ToolContract{target: url} -> {:reply, {:ok, url}, state}
+      url when is_binary(url) ->
+        {:reply, {:ok, url}, state}
+
+      _ ->
+        {:reply, {:error, :not_found}, state}
     end
   end
 
-  def update_last_seen(pid) do
-    GenServer.cast(pid, :update_last_seen)
-  end
-
+  @impl true
   def handle_cast(:update_last_seen, state) do
     {:noreply, %{state | last_seen: DateTime.utc_now()}}
   end
 
-  def handle_cast({:execute_tool, tool_node, %RelayContext{} = context}, state) do
-    IO.puts("🛠️ AgentNode received #{tool_node.id} for execution")
+  @impl true
+  def handle_cast({:execute_tool, tool_node, %RelayContext{} = ctx}, state) do
+    IO.puts("🛠️ AgentNode executing #{tool_node.id}")
 
     contract =
       Map.get(state.public_tools, tool_node.id) ||
         Map.get(state.private_tools, tool_node.id)
 
     case contract do
-      %ToolContract{} ->
-        case ToolValidator.validate_input(contract, tool_node.input) do
+      %ToolContract{} = c ->
+        case ToolValidator.validate_input(c, tool_node.input) do
           :ok ->
-            do_execute_tool(contract, tool_node, context)
+            do_execute_tool(c, tool_node, ctx)
 
           {:error, reason} ->
-            IO.puts("❌ Input validation failed: #{inspect(reason)}")
-
-            RelayContext.broadcast(
-              context,
-              {:tool_error, tool_node.id, %{error: "invalid_input", details: reason}}
-            )
+            RelayContext.broadcast(ctx, {:tool_error, tool_node.id, %{invalid_input: reason}})
         end
 
+      url when is_binary(url) ->
+        # raw URL targets: echo the input back
+        RelayContext.broadcast(ctx, {:executed_tool, tool_node.id, tool_node.input})
+
       _ ->
-        RelayContext.broadcast(context, {:tool_error, tool_node.id, "Tool not found"})
+        RelayContext.broadcast(ctx, {:tool_error, tool_node.id, "Tool not found"})
     end
 
     {:noreply, state}
+  end
+
+  ## Private helpers
+
+  defp do_execute_tool(%ToolContract{mode: {:http, verb}, target: url}, tool_node, ctx) do
+    Task.start(fn ->
+      headers = [{"Content-Type", "application/json"}]
+      body = Jason.encode!(tool_node.input)
+
+      case HTTPoison.request(to_string(verb), url, body, headers, []) do
+        {:ok, %HTTPoison.Response{status_code: 200, body: resp}} ->
+          RelayContext.broadcast(ctx, {:executed_tool, tool_node.id, resp})
+
+        {:ok, %HTTPoison.Response{status_code: code, body: resp}} ->
+          RelayContext.broadcast(ctx, {:tool_error, tool_node.id, %{status: code, body: resp}})
+
+        {:error, err} ->
+          RelayContext.broadcast(ctx, {:tool_error, tool_node.id, %{error: inspect(err)}})
+      end
+    end)
+  end
+
+  defp do_execute_tool(%ToolContract{mode: {:mock, _}}, tool_node, ctx) do
+    RelayContext.broadcast(ctx, {:executed_tool, tool_node.id, %{"mock" => "response"}})
+  end
+
+  defp do_execute_tool(_, tool_node, ctx) do
+    RelayContext.broadcast(ctx, {:tool_error, tool_node.id, "Unsupported tool mode"})
   end
 end

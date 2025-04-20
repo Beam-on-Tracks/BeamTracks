@@ -2,6 +2,8 @@ defmodule TrackrunnerWeb.ToolControllerTest do
   use ExUnit.Case, async: true
   use TrackrunnerWeb.ConnCase
 
+  alias Trackrunner.WorkflowRuntime
+
   setup do
     {:ok, _} = Trackrunner.AgentFleet.ensure_started("agent_1")
     {:ok, _} = Trackrunner.AgentFleet.ensure_started("agentzero")
@@ -24,7 +26,7 @@ defmodule TrackrunnerWeb.ToolControllerTest do
     #   case Registry.lookup(Trackrunner.AgentFleetRegistry, "agent_1") do
     #     [{pid, _}] ->
     #       DynamicSupervisor.terminate_child(Trackrunner.FleetSupervisor, pid)
-    #
+    # 
     #     _ ->
     #       :ok
     #   end
@@ -53,12 +55,7 @@ defmodule TrackrunnerWeb.ToolControllerTest do
       notify_list: [{:pid, self()}]
     }
 
-    # ✅ Pass self() in the meta to receive the message
-    Trackrunner.WorkflowRuntime.handle_tool_node(
-      %{id: tool_node_id, input: "hello world", output: ""},
-      context
-    )
-
+    WorkflowRuntime.handle_tool_node(%{id: "test:echo", input: "hello world"}, context)
     assert_receive {:executed_tool, ^tool_node_id, "hello world"}, 1000
   end
 

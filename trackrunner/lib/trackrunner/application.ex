@@ -26,8 +26,8 @@ defmodule Trackrunner.Application do
       {Registry, keys: :unique, name: :agent_node_registry},
       {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor},
       {DynamicSupervisor, strategy: :one_for_one, name: BeaconSupervisor},
-      Trackrunner.ToolRegistry,
-      Trackrunner.WorkflowRuntime,
+      {Trackrunner.WorkflowRuntime, []},
+      {Trackrunner.ToolRegistry, []},
       Trackrunner.FleetScoreCache,
       Trackrunner.AgentChannelManager
     ]

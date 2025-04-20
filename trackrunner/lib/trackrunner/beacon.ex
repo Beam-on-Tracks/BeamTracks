@@ -42,12 +42,17 @@ defmodule Trackrunner.Beacon do
   end
 
   @impl true
-  def handle_info({topic, msg}, %{socket: socket, subscriptions: subs} = state) do
-    # Extract event name from topic suffix
-    "channel:#{state.category}:" <> event = topic
+  def handle_info({topic, msg}, %{socket: socket, subscriptions: subs, category: cat} = state) do
+    prefix = "channel:" <> cat <> ":"
 
-    if event in state.subscriptions do
-      Phoenix.Channel.push(socket, event, msg)
+    case topic do
+      ^prefix <> event ->
+        if event in subs do
+          Phoenix.Channel.push(socket, event, msg)
+        end
+
+      _ ->
+        :noop
     end
 
     {:noreply, state}

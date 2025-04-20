@@ -22,10 +22,6 @@ defmodule TrackrunnerWeb.Router do
     post "/ping", PingController, :ping
   end
 
-  socket "/socket", TrackrunnerWeb.BeaconSocket,
-    websocket: true,
-    longpoll: false
-
   # Other scopes may use custom stacks.
   # scope "/api", TrackrunnerWeb do
   #   pipe_through :api
