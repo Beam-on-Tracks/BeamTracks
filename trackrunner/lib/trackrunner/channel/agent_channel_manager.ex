@@ -1,4 +1,4 @@
-defmodule Trackrunner.AgentChannelManager do
+defmodule Trackrunner.Channel.AgentChannelManager do
   @moduledoc """
   Maintains a mapping of categories → fleet_id → list of WebsocketContract entries.
 
@@ -14,64 +14,48 @@ defmodule Trackrunner.AgentChannelManager do
     }
 
   v1.0 TODO:
-  - implemnet warm pool scaling 
+  - Pull warm pool data from WarmPool when doing event dispatch
+  - Add warm pool scaling logic (new module? use ETS for metrics? maybe `Trackrunner.Runtime.Scaler`)
   """
 
   use GenServer
-  alias Trackrunner.WebsocketContract
-
+  alias Trackrunner.Channel.WarmPool
+  alias Trackrunner.Channel.WebsocketContract
   require Logger
 
   # Public API
 
-  @doc """
-  Starts the manager under the supervisor.
-  """
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  @doc """
-  Register a list of WebsocketContract structs for a given fleet_id and node uid.
-  """
   @spec register_channels(String.t(), integer(), [WebsocketContract.t()]) :: :ok
   def register_channels(fleet_id, uid, contracts)
       when is_binary(fleet_id) and is_integer(uid) and is_list(contracts) do
     GenServer.call(__MODULE__, {:register, fleet_id, uid, contracts})
   end
 
-  @doc """
-  Unregister all channel entries for the given node uid.
-  """
   @spec unregister_node(integer()) :: :ok
-  def unregister_node(uid) when is_integer(uid) do
+  def unregister_node(uid) do
     GenServer.call(__MODULE__, {:unregister, uid})
   end
 
-  @doc """
-  Returns a map of fleet_id => list of WebsocketContract structs
-  for the given category (regardless of event).
-  """
   @spec lookup_candidates(String.t()) :: %{optional(String.t()) => [WebsocketContract.t()]}
-  def lookup_candidates(category) when is_binary(category) do
+  def lookup_candidates(category) do
     GenServer.call(__MODULE__, {:lookup_category, category})
   end
 
-  @doc """
-  Returns a flat list of {fleet_id, WebsocketContract} tuples
-  for agents subscribed to `event` in `category`.
-  """
   @spec lookup_listeners(String.t(), String.t()) :: [{String.t(), WebsocketContract.t()}]
-  def lookup_listeners(category, event) when is_binary(category) and is_binary(event) do
+  def lookup_listeners(category, event) do
     GenServer.call(__MODULE__, {:lookup_listeners, category, event})
   end
 
   def mark_connected(agent_id, socket_pid) do
-    GenServer.cast(__MODULE__, {:mark_connected, agent_id, socket_pid})
+    WarmPool.mark_connected(agent_id, socket_pid)
   end
 
   def mark_disconnected(agent_id) do
-    GenServer.cast(__MODULE__, {:mark_disconnected, agent_id})
+    WarmPool.mark_disconnected(agent_id)
   end
 
   # Called directly, no call/cast
@@ -79,27 +63,31 @@ defmodule Trackrunner.AgentChannelManager do
     :ets.lookup(:agent_channels, {category, event})
   end
 
-  # GenServer callbacks
+  # Server Callbacks
 
   @impl true
-  def init(_init_arg) do
-    # Empty map: no categories registered yet
+  def init(_opts) do
+    # channels: %{ category => %{fleet_id => [contracts]} }
+    # warm_pool: %{ fleet_id => %{socket_pid: pid, …} }
     {:ok, %{}}
   end
 
   @impl true
   def handle_call({:register, fleet_id, uid, contracts}, _from, state) do
     new_state =
-      Enum.reduce(contracts, state, fn %WebsocketContract{category: cat} = c, acc ->
-        # initialize category/fleet if missing
-        fleet_map = Map.get(acc, cat, %{})
+      Enum.reduce(contracts, state, fn %WebsocketContract{category: category} = contract, acc ->
+        # 1) grab (or init) the map of fleets for this category
+        fleet_map = Map.get(acc, category, %{})
+
+        # 2) grab (or init) the list of entries for this fleet
         entries = Map.get(fleet_map, fleet_id, [])
 
-        # annotate contract with uid
-        entry = %{c | uid: uid}
+        # 3) annotate with uid & the fleet it belongs to
+        entry = %WebsocketContract{contract | uid: uid, agent_id: fleet_id}
 
+        # 4) stick it back under this fleet in this category
         updated_fleet_map = Map.put(fleet_map, fleet_id, [entry | entries])
-        Map.put(acc, cat, updated_fleet_map)
+        Map.put(acc, category, updated_fleet_map)
       end)
 
     {:reply, :ok, new_state}
@@ -107,16 +95,14 @@ defmodule Trackrunner.AgentChannelManager do
 
   @impl true
   def handle_call({:unregister, uid}, _from, state) do
-    # remove any entries whose uid matches, across all categories & fleets
     new_state =
       for {cat, fleet_map} <- state, into: %{} do
-        filtered_fleet_map =
+        filtered =
           for {fleet_id, entries} <- fleet_map, into: %{} do
-            filtered_entries = Enum.reject(entries, fn e -> e.uid == uid end)
-            {fleet_id, filtered_entries}
+            {fleet_id, Enum.reject(entries, fn e -> e.uid == uid end)}
           end
 
-        {cat, filtered_fleet_map}
+        {cat, filtered}
       end
 
     {:reply, :ok, new_state}
@@ -128,33 +114,21 @@ defmodule Trackrunner.AgentChannelManager do
   end
 
   @impl true
-  def handle_call({:lookup_listeners, category, event}, _from, state) do
+  def handle_call({:lookup_listeners, category, event}, _from, channels) do
     listeners =
-      state
-      |> Map.get(category, %{})
+      Map.get(channels, category, %{})
       |> Enum.flat_map(fn {fleet_id, entries} ->
-        entries
-        |> Enum.filter(fn e -> event in e.subscriptions end)
-        |> Enum.map(fn e -> {fleet_id, e} end)
+        case WarmPool.lookup_socket(fleet_id) do
+          pid when is_pid(pid) ->
+            entries
+            |> Enum.filter(fn e -> event in e.subscriptions end)
+            |> Enum.map(fn e -> {fleet_id, e, pid} end)
+
+          _ ->
+            []
+        end
       end)
 
-    {:reply, listeners, state}
-  end
-
-  # Inside handle_cast
-  def handle_cast({:mark_connected, agent_id, pid}, state) do
-    updated =
-      Map.update(state, agent_id, %{contracts: [], socket_pid: pid}, fn entry ->
-        %{entry | socket_pid: pid}
-      end)
-
-    Logger.info("📡 #{agent_id} joined the warm pool")
-    {:noreply, updated}
-  end
-
-  def handle_cast({:mark_disconnected, agent_id}, state) do
-    updated = Map.delete(state, agent_id)
-    Logger.info("❌ #{agent_id} left the warm pool")
-    {:noreply, updated}
+    {:reply, listeners, channels}
   end
 end

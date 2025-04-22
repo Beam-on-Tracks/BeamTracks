@@ -47,7 +47,7 @@ defmodule Trackrunner.Agent.Fleet do
             public_tools: map(),
             private_tools: map(),
             tool_dependencies: map(),
-            agent_channels: [Trackrunner.WebsocketContract.t()]
+            agent_channels: [Trackrunner.Channel.WebsocketContract.t()]
           }
         ) :: {:ok, %{uid: non_neg_integer()}} | {:error, any()}
   def add_node(agent_id, data) do

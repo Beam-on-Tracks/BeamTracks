@@ -1,37 +1,42 @@
-defmodule TTrackrunnerWeb.PingController do
+defmodule TrackrunnerWeb.PingController do
   use TrackrunnerWeb, :controller
 
   require Logger
 
   alias Trackrunner.Tool.Contract, as: ToolContract
-  alias Trackrunner.WebsocketContract
+  alias Trackrunner.Channel.AgentChannelManager
+  alias Trackrunner.Channel.WebsocketContract
 
   def ping(conn, params) do
     Logger.debug("PING PARAMS: #{inspect(params)}")
 
-    result =
-      Trackrunner.Registry.register_node(params["agent_id"], %{
-        ip: params["ip_hint"],
-        public_tools: parse_tools(Map.get(params, "public_tools", [])),
-        private_tools: parse_tools(Map.get(params, "private_tools", [])),
-        tool_dependencies: Map.get(params, "tool_dependencies", %{}),
-        agent_channels: parse_channels(Map.get(params, "agent_channels", []))
-      })
+    agent_id = params["agent_id"]
 
-    Logger.debug("REGISER RESULT: #{inspect(result)}")
+    node_data = %{
+      agent_id: agent_id,
+      ip: params["ip_hint"],
+      public_tools: parse_tools(Map.get(params, "public_tools", [])),
+      private_tools: parse_tools(Map.get(params, "private_tools", [])),
+      tool_dependencies: Map.get(params, "tool_dependencies", %{}),
+      agent_channels: parse_channels(Map.get(params, "agent_channels", []))
+    }
 
-    case result do
-      {:ok, %{uid: uid}} ->
-        json(conn, %{status: "ok", uid: uid, message: "Node registered"})
+    Logger.debug("REGISTER DATA: #{inspect(node_data)}")
 
-      {:error, reason} ->
-        Logger.error("Registry error: #{inspect(reason)}")
-        json(conn, %{error: inspect(reason)})
+    case Trackrunner.Registry.register_node(agent_id, node_data) do
+      {:ok, %{uid: uid}} = ok ->
+        AgentChannelManager.register_channels(
+          agent_id,
+          uid,
+          node_data.agent_channels
+        )
+
+        json(conn, %{uid: uid})
+
+      error ->
+        Logger.error("Ping registration failed: #{inspect(error)}")
+        send_resp(conn, 500, "Error")
     end
-  rescue
-    err ->
-      Logger.error("🔥 CRASH in ping: #{inspect(err)}")
-      json(conn, %{error: Exception.message(err)})
   end
 
   defp parse_tools([]), do: %{}
@@ -59,18 +64,16 @@ defmodule TTrackrunnerWeb.PingController do
     end)
   end
 
-  defp parse_channels(list) when is_list(list) do
-    Enum.map(list, fn %{
-                        "category" => cat,
-                        "identity" => id,
-                        "subscription" => subs,
-                        "publish" => pubs
-                      } ->
+  defp parse_channels(list) do
+    Enum.map(list, fn item ->
       %WebsocketContract{
-        category: cat,
-        identity: id,
-        subscriptions: subs,
-        publishes: pubs
+        uid: nil,
+        # agent_id comes later in AgentChannelManager
+        category: Map.get(item, "category", Map.get(item, :category)),
+        subscriptions: Map.get(item, "subscriptions", []),
+        publishes: Map.get(item, "publishes", []),
+        init_event: Map.get(item, "initEvents", Map.get(item, :init_event)),
+        close_event: Map.get(item, "closeEvents", Map.get(item, :close_event))
       }
     end)
   end

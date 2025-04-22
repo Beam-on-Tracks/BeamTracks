@@ -29,7 +29,7 @@ defmodule Trackrunner.Application do
       {Trackrunner.WorkflowRuntime, []},
       {Trackrunner.Tool.Registry, []},
       Trackrunner.FleetScoreCache,
-      Trackrunner.AgentChannelManager
+      Trackrunner.Channel.AgentChannelManager
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

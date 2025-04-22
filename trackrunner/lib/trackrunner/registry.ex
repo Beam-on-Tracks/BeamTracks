@@ -12,7 +12,7 @@ defmodule Trackrunner.Registry do
           public_tools: map(),
           private_tools: map(),
           tool_dependencies: map(),
-          agent_channels: [Trackrunner.WebsocketContract.t()]
+          agent_channels: [Trackrunner.Channel.WebsocketContract.t()]
         }) ::
           {:ok, %{uid: integer()}} | {:error, any()}
   def register_node(agent_id, node_data) do

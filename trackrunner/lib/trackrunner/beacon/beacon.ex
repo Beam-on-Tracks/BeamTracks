@@ -63,3 +63,4 @@ defmodule Trackrunner.Beacon do
     {:noreply, state}
   end
 end
+
