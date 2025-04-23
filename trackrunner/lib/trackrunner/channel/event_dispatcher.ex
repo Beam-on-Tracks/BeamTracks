@@ -44,6 +44,12 @@ defmodule Trackrunner.Channel.EventDispatcher do
 
     # 3. Fan out & clean up dead sockets
     AgentChannelManager.dispatch(category, event, channel_msg)
+
+    # 4. Also broadcast on Phoenix so real sockets see it
+    topic = "#{category}:#{event}"
+    TrackrunnerWeb.Endpoint.broadcast!(topic, "event:#{event}", payload)
+
+    :ok
   end
 
   # Private helpers
@@ -55,4 +61,3 @@ defmodule Trackrunner.Channel.EventDispatcher do
     payload
   end
 end
-

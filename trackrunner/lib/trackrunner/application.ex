@@ -7,18 +7,13 @@ defmodule Trackrunner.Application do
 
   @impl true
   def start(_type, _args) do
-    # Load the Gleam modules from the pulsekeeper project
     add_gleam_path()
 
     children = [
       TrackrunnerWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:trackrunner, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Trackrunner.PubSub},
-      # Start the Finch HTTP client for sending emails
       {Finch, name: Trackrunner.Finch},
-      # Start a worker by calling: Trackrunner.Worker.start_link(arg)
-      # {Trackrunner.Worker, arg},
-      # Start to serve requests, typically the last entry
       TrackrunnerWeb.Endpoint,
 
       # BeamTracks core
@@ -29,11 +24,10 @@ defmodule Trackrunner.Application do
       {Trackrunner.WorkflowRuntime, []},
       {Trackrunner.Tool.Registry, []},
       Trackrunner.FleetScoreCache,
-      Trackrunner.Channel.AgentChannelManager
+      Trackrunner.Channel.AgentChannelManager,
+      Trackrunner.Channel.WarmPool
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Trackrunner.Supervisor]
     Supervisor.start_link(children, opts)
   end

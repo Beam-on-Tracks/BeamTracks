@@ -7,8 +7,7 @@ defmodule Trackrunner.Channel.AgentChannelManagerTest do
   alias Trackrunner.Channel.WebsocketContract
 
   setup do
-    # spin up both GenServers under the test supervisor
-    start_supervised!(WarmPool)
+    Application.put_env(:trackrunner, :pusher, Trackrunner.Channel.TestPusher)
     :ok
   end
 
@@ -44,7 +43,7 @@ defmodule Trackrunner.Channel.AgentChannelManagerTest do
 
   test "push_to_listener to a subscribed, live pid" do
     # spawn a minimal listener that will forward the push
-    listener = spawn(fn -> nil end)
+    listener = spawn(fn -> Process.sleep(:infinity) end)
     # construct a full contract: subscribing to "my_event"
     contract = %WebsocketContract{
       agent_id: "fleet1",
