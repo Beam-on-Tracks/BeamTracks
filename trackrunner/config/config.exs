@@ -10,6 +10,8 @@ import Config
 config :trackrunner,
   generators: [timestamp_type: :utc_datetime]
 
+config :trackrunner, :pusher, Trackrunner.Channel.PhoenixPusher
+
 # Configures the endpoint
 config :trackrunner, TrackrunnerWeb.Endpoint,
   url: [host: "localhost"],

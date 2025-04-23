@@ -63,6 +63,43 @@ defmodule Trackrunner.Channel.AgentChannelManager do
     :ets.lookup(:agent_channels, {category, event})
   end
 
+  @doc """
+  Dispatches `payload` to all subscribers of `event` in `category`.
+  """
+  @spec dispatch(String.t(), String.t(), any()) :: :ok
+  def dispatch(category, event, payload) do
+    lookup_listeners(category, event)
+    |> Enum.each(&push_to_listener(&1, payload))
+
+    :ok
+  end
+
+  @doc """
+  Pushes `payload` to a single listener `{fleet_id, contract, pid}`.
+  If the socket PID is dead, we clean it up immediately.
+  """
+  @spec push_to_listener({String.t(), WebsocketContract.t(), pid()}, any()) ::
+          :ok | :error
+  def push_to_listener({fleet, contract, pid}, %{topic: t, message: m}) do
+    pusher = Application.fetch_env!(:trackrunner, :pusher)
+
+    if Process.alive?(pid) do
+      case pusher.push(pid, t, m) do
+        :ok ->
+          :ok
+
+        {:error, _} ->
+          WarmPool.mark_disconnected(contract.agent_id)
+          unregister_node(contract.uid)
+          :error
+      end
+    else
+      WarmPool.mark_disconnected(contract.agent_id)
+      unregister_node(contract.uid)
+      :error
+    end
+  end
+
   # Server Callbacks
 
   @impl true
