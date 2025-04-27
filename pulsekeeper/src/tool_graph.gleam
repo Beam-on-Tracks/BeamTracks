@@ -22,7 +22,9 @@ pub type ToolGraph = dict.Dict(ToolId, ToolNode)
 pub type StaticWorkflow {
   StaticWorkflow(
     name: String,
-    path: List(ToolId)
+    path: List(ToolId),
+    source_input: String,
+    target_output: String
   )
 }
 
@@ -178,16 +180,33 @@ fn visit_dependencies(
 pub fn group_paths(graph: ToolGraph, sorted: List(ToolId)) -> List(StaticWorkflow) {
   let extend_path = fn(acc, id) {
     case dict.get(graph, id) {
-      Ok(ToolNode(_, deps, _, _)) ->
+      Ok(ToolNode(_, deps, input, output)) ->
         case deps {
-          [] -> [StaticWorkflow("path_" <> int.to_string(list.length(acc)), [id]), ..acc]
-          _ -> list.append(
-            deps |> list.map(fn(d) {
-              StaticWorkflow("path_" <> int.to_string(list.length(acc)), [id, d])
-            }),
-            acc
-          )
+          [] ->
+            [StaticWorkflow(
+               "path_" <> int.to_string(list.length(acc)),
+               [id],
+               input,
+               output
+             ), ..acc]
+
+          _ ->
+            list.append(
+              deps |> list.map(fn(d) {
+                // inherit input of first, output of last
+                let first_input = input
+                let last_output = output
+                StaticWorkflow(
+                  "path_" <> int.to_string(list.length(acc)),
+                  [id, d],
+                  first_input,
+                  last_output
+                )
+              }),
+              acc
+            )
         }
+
       _ -> acc
     }
   }
@@ -205,10 +224,12 @@ pub fn next_nodes(plan: WorkflowDAG, current: ToolId) -> List(ToolId) {
 }
 
 pub fn static_workflow_to_json(workflow: StaticWorkflow) -> st.StringTree {
-  let StaticWorkflow(name, path) = workflow
+  let StaticWorkflow(name, path, source_input, target_output) = workflow
   json_object([
     json_field("name", json_string_value(name)),
-    json_field("path", json_array(path |> list.map(tool_id_to_json)))
+    json_field("path", json_array(path |> list.map(tool_id_to_json))),
+    json_field("source_input", json_string_value(source_input)),
+    json_field("target_output", json_string_value(target_output))
   ])
 }
 
@@ -233,9 +254,7 @@ pub fn workflow_dag_to_json(plan: WorkflowDAG) -> st.StringTree {
       )
     )
   ])
-}
-
-// JSON helpers from earlier remain unchanged
+}// JSON helpers from earlier remain unchanged
 
 fn escape_string(s: String) -> String {
   s
@@ -275,6 +294,7 @@ fn json_object(fields: List(st.StringTree)) -> st.StringTree {
       st.concat([
         st.from_string("{"),
         st.concat([first, ..with_commas]),
+
         st.from_string("}")
       ])
     }
