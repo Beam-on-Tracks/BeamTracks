@@ -6,8 +6,12 @@ config :trackrunner, :pusher, Trackrunner.Channel.TestPusher
 # you can enable the server option below.
 config :trackrunner, TrackrunnerWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "FPOMf59D48tRibqmuiFIb0fvGLvAfbt9T2lSnEViz+W39Aed/Anwoxp+iDIp3SOx",
+  secret_key_base: System.get_env("SECRET_KEY_BASE") || "test_secret_key_base",
   server: false
+
+
+config :trackrunner, :openai_chat_module, Trackrunner.Planner.MockChat
+config :trackrunner, :planner_real_calls, false
 
 # In test we don't send emails
 config :trackrunner, Trackrunner.Mailer, adapter: Swoosh.Adapters.Test
