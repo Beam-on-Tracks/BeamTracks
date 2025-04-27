@@ -11,6 +11,7 @@ config :trackrunner,
   generators: [timestamp_type: :utc_datetime]
 
 config :trackrunner, :pusher, Trackrunner.Channel.PhoenixPusher
+config :trackrunner, :planner_llm, Trackrunner.Planner.GPT4
 
 # Configures the endpoint
 config :trackrunner, TrackrunnerWeb.Endpoint,
@@ -21,7 +22,10 @@ config :trackrunner, TrackrunnerWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Trackrunner.PubSub,
-  live_view: [signing_salt: "GEg2Ar7H"]
+  live_view: [signing_salt: "GEg2Ar7H"],
+  http: [ip: {127, 0, 0, 1}, port: 4002],
+  secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
+  server: false
 
 # Configures the mailer
 #

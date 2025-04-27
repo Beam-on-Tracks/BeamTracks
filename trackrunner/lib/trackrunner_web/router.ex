@@ -19,7 +19,17 @@ defmodule TrackrunnerWeb.Router do
 
     get "/", PageController, :home
     get "/tool/public/:agent_id/:name", ToolController, :get_public
+    get "/dag", DAGController, :show
     post "/ping", PingController, :ping
+
+    post "/plan/suggest", PlannerController, :suggest
+    post "/plan/execute", PlannerController, :execute
+
+    # Agent Research API: list tools for a given agent
+    get "/agents/:agent_id", AgentController, :show
+
+    # Workflow Registration API: allow uploading a custom DAG
+    post "/workflows", WorkflowController, :create
   end
 
   # Other scopes may use custom stacks.

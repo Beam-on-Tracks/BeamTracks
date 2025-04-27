@@ -2,8 +2,19 @@ defmodule Trackrunner.FleetScoreCache do
   @moduledoc """
   Tracks request counts and (eventually) latency scores per agent.
   Used by WorkflowRuntime to pick the best candidate agent.
-  """
 
+  ## MVP
+    - Simple request counters
+    - Tracks only request volume (load proxy)
+
+  ## TODO (Post-MVP Evolution)
+    - [ ] Track success ratio (failures vs. successes)
+    - [ ] Track average and p95 latency
+    - [ ] Support agent location updates and tagging
+    - [ ] Score agents by weighted composite (latency, load, region)
+    - [ ] Maintain hashmap of tries where the region to IPs
+    - [ ] Return best N candidates for distributed DAG dispatch
+  """
   use GenServer
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, %{}, name: __MODULE__)

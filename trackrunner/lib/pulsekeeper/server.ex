@@ -9,7 +9,7 @@ defmodule Pulsekeeper.Server do
           # Gleam WorkflowDAG struct
           workflow_dag: any(),
           # Only tracking completed nodes
-          registered_tools: MapSet.t(tool_id)
+          static_workflows: MapSet.t(tool_id)
         }
 
   # --- Public API ---
@@ -38,26 +38,40 @@ defmodule Pulsekeeper.Server do
     GenServer.call(__MODULE__, {:sync_graph, tool_nodes})
   end
 
+  def get_static_workflows() do
+    GenServer.call(__MODULE__, :static_workflows)
+  end
+
   # --- GenServer Callbacks ---
 
   @impl true
   def init(_) do
-    {:ok, %{workflow_dag: nil, registered_tools: MapSet.new()}}
+    {:ok, %{workflow_dag: nil, static_workflows: MapSet.new()}}
   end
 
   @impl true
-  def handle_call({:register_dag, graph}, _from, _state) do
+  def handle_call({:register_dag, graph}, _from, state) do
     case Trackrunner.Tool.Graph.create_workflow_dag(graph) do
       {:ok, dag} ->
-        {:reply, :ok, %{workflow_dag: dag, registered_tools: MapSet.new()}}
+        new_state = %{
+          workflow_dag: dag,
+          static_workflows: MapSet.new()
+        }
+
+        {:reply, :ok, new_state}
 
       {:error, reason} ->
-        {:reply, {:error, reason}, %{workflow_dag: nil, registered_tools: MapSet.new()}}
+        new_state = %{
+          workflow_dag: nil,
+          static_workflows: MapSet.new()
+        }
+
+        {:reply, {:error, reason}, new_state}
     end
   end
 
   def handle_call({:mark_complete, node_id}, _from, state) do
-    {:reply, :ok, %{state | registered_tools: MapSet.put(state.registered_tools, node_id)}}
+    {:reply, :ok, %{state | static_workflows: MapSet.put(state.static_workflows, node_id)}}
   end
 
   def handle_call({:next_nodes, current_id}, _from, %{workflow_dag: dag} = state) do
@@ -86,5 +100,9 @@ defmodule Pulsekeeper.Server do
 
   def handle_call({:get, key}, _from, state) do
     {:reply, Map.get(state, key, nil), state}
+  end
+
+  def handle_call(:static_workflows, _from, state) do
+    {:reply, state.static_workflows, state}
   end
 end
