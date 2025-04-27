@@ -12,9 +12,11 @@ defmodule Trackrunner.Planner.Suggester do
     n = Map.get(params, "n", @default_n)
     planner = Application.get_env(:trackrunner, :planner_llm, Trackrunner.Planner.GPT4)
 
-    # static_paths for context
-    static_dag = DAGRegistry.get_active_dag() || %{}
-    static_paths = Map.get(static_dag, :paths, [])
+    static_paths =
+      case DAGRegistry.get_active_dag() do
+        %{paths: paths} when is_list(paths) -> paths
+        _ -> []
+      end
 
     llm_input = %{"goal" => goal, "static_paths" => static_paths}
 
