@@ -1,4 +1,3 @@
-{:ok, _} = Trackrunner.Planner.DAGRegistry.start_link([])
 ExUnit.start()
 
 # ensure our application and its children (WarmPool, AgentChannelManager, etc.) are running

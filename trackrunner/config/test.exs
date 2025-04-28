@@ -9,9 +9,11 @@ config :trackrunner, TrackrunnerWeb.Endpoint,
   secret_key_base: System.get_env("SECRET_KEY_BASE") || "test_secret_key_base",
   server: false
 
-
 config :trackrunner, :openai_chat_module, Trackrunner.Planner.MockChat
+config :trackrunner, :tool_runtime, Trackrunner.Runtime.MockTool
 config :trackrunner, :planner_real_calls, false
+
+config :logger, level: :warn
 
 # In test we don't send emails
 config :trackrunner, Trackrunner.Mailer, adapter: Swoosh.Adapters.Test

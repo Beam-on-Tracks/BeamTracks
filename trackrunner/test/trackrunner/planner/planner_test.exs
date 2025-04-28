@@ -4,9 +4,7 @@ defmodule Trackrunner.PlannerTest do
   alias Trackrunner.Planner
 
   setup do
-    unless Process.whereis(Trackrunner.Planner.DAGRegistry) do
-      {:ok, _} = Trackrunner.Planner.DAGRegistry.start_link([])
-    end
+    Trackrunner.Planner.DAGRegistry.start_link([])
 
     :ok
   end
