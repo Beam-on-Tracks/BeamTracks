@@ -4,11 +4,6 @@ defmodule Trackrunner.Tool.GraphTest do
   alias Trackrunner.Tool.Graph
   alias Trackrunner.Planner.DAGRegistry
 
-  setup do
-    {:ok, _} = Trackrunner.Planner.DAGRegistry.start_link([])
-    :ok
-  end
-
   test "add_node/4 returns a new graph and registers it in DAGRegistry" do
     # Start with an empty Gleam graph
     original = Graph.new()

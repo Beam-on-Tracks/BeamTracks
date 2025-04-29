@@ -1,3 +1,4 @@
+{:ok, _} = Cachex.start_link(name: :workflow_cache)
 ExUnit.start()
 
 # ensure our application and its children (WarmPool, AgentChannelManager, etc.) are running

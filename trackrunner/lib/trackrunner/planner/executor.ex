@@ -10,18 +10,41 @@ defmodule Trackrunner.Planner.Executor do
     dag = DAGRegistry.get_active_dag()
     Logger.debug("[DEBUG] DAG inside Executor: #{inspect(dag)}")
 
-    case dag do
-      %{paths: paths} when is_list(paths) ->
-        case Enum.find(paths, fn %{name: name} -> name == workflow_id end) do
-          nil ->
-            {:error, :workflow_not_found}
+    if is_nil(dag) do
+      {:error, :no_workflow_dag}
+    else
+      case Cachex.get(:workflow_cache, workflow_id) do
+        {:ok, nil} ->
+          lookup_static_workflow(workflow_id, dag)
+          |> case do
+            {:ok, tool_steps} -> run_steps(tool_steps, input)
+            {:error, reason} -> {:error, reason}
+          end
 
-          %{path: tool_steps} ->
-            run_steps(tool_steps, input)
-        end
+        {:ok, cached_workflow} when is_map(cached_workflow) ->
+          run_steps(cached_workflow["path"], input)
 
-      _ ->
-        {:error, :no_workflow_dag}
+        {:error, _reason} ->
+          {:error, :cache_lookup_failed}
+      end
+    end
+  end
+
+  defp lookup_static_workflow(workflow_id, %{paths: paths}) do
+    case Enum.find(paths, fn %{name: name} -> name == workflow_id end) do
+      nil ->
+        {:error, :workflow_not_found}
+
+      %{path: tool_steps} = workflow ->
+        # This is the key change - store a map with path instead of the whole workflow
+        cached_entry = %{
+          "path" => tool_steps,
+          "source_input" => workflow[:source_input],
+          "target_output" => workflow[:target_output]
+        }
+
+        Cachex.put(:workflow_cache, workflow_id, cached_entry)
+        {:ok, tool_steps}
     end
   end
 
