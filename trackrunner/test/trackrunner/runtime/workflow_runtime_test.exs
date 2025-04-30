@@ -3,19 +3,20 @@ defmodule Trackrunner.WorkflowRuntimeTest do
 
   alias Trackrunner.WorkflowRuntime
   alias Trackrunner.RelayContext
-  alias Trackrunner.TestSupport
+  
+  import TestSupport
 
   setup do
-    TestSupport.ensure_registry_started(Trackrunner.Agent.FleetRegistry)
-    TestSupport.ensure_registry_started(:agent_node_registry)
+    ensure_registry_started(Trackrunner.Agent.FleetRegistry)
+    ensure_registry_started(:agent_node_registry)
 
-    TestSupport.ensure_process_started(
+    ensure_process_started(
       Trackrunner.FleetSupervisor,
       {DynamicSupervisor, strategy: :one_for_one, name: Trackrunner.FleetSupervisor}
     )
 
-    TestSupport.ensure_process_started(Trackrunner.Tool.Registry, Trackrunner.Tool.Registry)
-    TestSupport.ensure_process_started(Trackrunner.WorkflowRuntime, Trackrunner.WorkflowRuntime)
+    ensure_process_started(Trackrunner.Tool.Registry, Trackrunner.Tool.Registry)
+    ensure_process_started(Trackrunner.WorkflowRuntime, Trackrunner.WorkflowRuntime)
 
     :ok
   end

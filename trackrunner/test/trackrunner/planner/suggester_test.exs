@@ -3,42 +3,29 @@ defmodule Trackrunner.Planner.SuggesterTest do
 
   alias Trackrunner.Planner.Suggester
   alias Trackrunner.Planner.DAGRegistry
+  import TestSupport
 
   setup do
-    DAGRegistry.register_active_dag(%{
-      paths: [
-        %{
-          name: "workflow1",
-          path: [{"fleet1", "tool_a"}],
-          source_input: "text",
-          target_output: "summary"
-        }
-      ]
-    })
-
+    ensure_dag_registry()
+    ensure_mock_planner()
     :ok
   end
 
-  @tag :skip
-  test "returns suggestions when DAG exists" do
-    # Fake DAG with static paths
-    dag = %{paths: [%{name: "workflow1", path: [{"agent1", "tool1"}]}]}
-    DAGRegistry.register_active_dag(dag)
+  test "returns dummy suggestions when DAG exists" do
+    DAGRegistry.register_active_dag(%{
+      paths: [%{name: "path1", path: [{"a", "echo"}], source_input: "in", target_output: "out"}]
+    })
 
-    input = %{"goal" => "Summarize news"}
-    {:ok, suggestions} = Suggester.suggest(input)
-
-    assert length(suggestions) > 0
-    suggestion = List.first(suggestions)
-    assert suggestion["workflowId"]
-    assert is_list(suggestion["workflow"])
-    assert is_binary(suggestion["expiration"])
+    {:ok, suggestions} = Suggester.suggest(%{"goal" => "anything"})
+    assert length(suggestions) >= 1
+    assert hd(suggestions)["workflow"] == ["echo"]
   end
 
-  @tag :skip
   test "returns error when no DAG exists" do
-    input = %{"goal" => "Summarize news"}
-    {:error, _reason, _map} = Suggester.suggest(input)
+    # Empty registry → unsupported
+    # planner_real_calls=false → dummy planner errors out with planning_failed/:no_static_workflows
+    assert {:error, :planning_failed, %{reason: ":no_static_workflows"}} =
+             Suggester.suggest(%{"goal" => "anything"})
   end
 
   test "returns error on invalid input" do

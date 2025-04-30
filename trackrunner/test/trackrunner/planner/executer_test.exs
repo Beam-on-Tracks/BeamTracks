@@ -4,33 +4,59 @@ defmodule Trackrunner.Planner.ExecutorTest do
   alias Trackrunner.Planner.Executor
   alias Trackrunner.Planner.DAGRegistry
 
-  # Helper functions directly in the test module
-  defp ensure_dag_registry do
-    case Process.whereis(Trackrunner.Planner.DAGRegistry) do
-      nil ->
-        Trackrunner.Planner.DAGRegistry.start_link([])
-
-      _pid ->
-        # Registry already exists, just return success
-        {:ok, Process.whereis(Trackrunner.Planner.DAGRegistry)}
-    end
-  end
-
-  defp ensure_workflow_cache do
-    case Process.whereis(:workflow_cache) do
-      nil ->
-        Cachex.start_link(name: :workflow_cache)
-
-      _pid ->
-        # Cache already exists, just return success
-        {:ok, Process.whereis(:workflow_cache)}
-    end
-  end
+  import TestSupport
 
   setup do
-    # Safely ensure both services are available
+    IO.puts("🔍 DIRECT LOG: Starting ExecutorTest setup")
+
+    # Start with a clean slate - delete any existing workflow_cache entries
+    if Process.whereis(:workflow_cache) do
+      IO.puts("🔍 DIRECT LOG: Clearing existing workflow_cache before test")
+
+      ["static_workflow", "cached_workflow", "failing_workflow", "nonexistent_workflow"]
+      |> Enum.each(fn key ->
+        # Only try to delete if the workflow_cache process exists
+        try do
+          Cachex.del(:workflow_cache, key)
+          IO.puts("🔍 DIRECT LOG: Deleted #{key} from workflow_cache")
+        catch
+          kind, error ->
+            IO.puts("🔍 DIRECT LOG: Error deleting #{key}: #{inspect(kind)} - #{inspect(error)}")
+        end
+      end)
+    end
+
+    # Now ensure services are started in the correct order
     {:ok, _} = ensure_workflow_cache()
     {:ok, _} = ensure_dag_registry()
+    ensure_mock_tool_runtime()
+
+    # Only register on_exit callback if the workflow_cache exists
+    if Process.whereis(:workflow_cache) do
+      on_exit(fn ->
+        IO.puts("🔍 DIRECT LOG: ExecutorTest cleanup in on_exit")
+        # Only try to delete if the workflow_cache still exists
+        if Process.whereis(:workflow_cache) do
+          IO.puts("🔍 DIRECT LOG: Clearing workflow_cache in on_exit")
+
+          ["static_workflow", "cached_workflow", "failing_workflow", "nonexistent_workflow"]
+          |> Enum.each(fn key ->
+            try do
+              Cachex.del(:workflow_cache, key)
+              IO.puts("🔍 DIRECT LOG: Successfully deleted #{key} in on_exit")
+            catch
+              kind, error ->
+                IO.puts(
+                  "🔍 DIRECT LOG: Error in on_exit deleting #{key}: #{inspect(kind)} - #{inspect(error)}"
+                )
+            end
+          end)
+        else
+          IO.puts("🔍 DIRECT LOG: workflow_cache process no longer exists in on_exit")
+        end
+      end)
+    end
+
     :ok
   end
 
@@ -49,14 +75,10 @@ defmodule Trackrunner.Planner.ExecutorTest do
 
       # 🧹 Auto-clear Cachex after each test
       on_exit(fn ->
-        workflows = [
-          "static_workflow",
-          "cached_workflow",
-          "failing_workflow",
-          "nonexistent_workflow"
-        ]
-
-        Enum.each(workflows, fn id -> Cachex.del(:workflow_cache, id) end)
+        if :ets.info(:workflow_cache) != :undefined do
+          ["static_workflow", "cached_workflow", "failing_workflow", "nonexistent_workflow"]
+          |> Enum.each(&Cachex.del(:workflow_cache, &1))
+        end
       end)
 
       :ok

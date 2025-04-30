@@ -9,11 +9,6 @@ defmodule TrackrunnerWeb.PlannerController do
       {:ok, suggestions} ->
         json(conn, suggestions)
 
-      {:error, :unsupported_goal, %{goal: goal}} ->
-        conn
-        |> put_status(503)
-        |> json(%{"error" => "Goal '#{goal}' is not supported", "code" => 503})
-
       {:error, reason} ->
         conn
         |> put_status(502)
@@ -39,4 +34,3 @@ defmodule TrackrunnerWeb.PlannerController do
     end
   end
 end
-
