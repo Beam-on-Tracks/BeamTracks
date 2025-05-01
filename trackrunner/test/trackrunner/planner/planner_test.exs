@@ -3,9 +3,12 @@ defmodule Trackrunner.PlannerTest do
 
   alias Trackrunner.Planner
 
-  setup do
-    Trackrunner.Planner.DAGRegistry.start_link([])
+  import TestSupport
 
+  setup do
+    ensure_dag_registry()
+    ensure_mock_planner()
+    ensure_mock_tool_runtime()
     :ok
   end
 
@@ -13,10 +16,8 @@ defmodule Trackrunner.PlannerTest do
     assert {:error, :invalid_request, _} = Planner.suggest(%{})
   end
 
-  @tag :skip
   test "execute/2 returns error when workflow ID is unknown" do
     # You could set up Pulsekeeper to have no workflows yet
-    result = Planner.execute("nonexistent-id", %{})
-    assert match?({:error, _}, result)
+    assert match?({:error, _}, Planner.execute("nonexistent-id", %{}))
   end
 end

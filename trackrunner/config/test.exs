@@ -9,6 +9,7 @@ config :trackrunner, TrackrunnerWeb.Endpoint,
   secret_key_base: System.get_env("SECRET_KEY_BASE") || "test_secret_key_base",
   server: false
 
+config :logger, level: :debug
 config :trackrunner, :openai_chat_module, Trackrunner.Planner.MockChat
 config :trackrunner, :tool_runtime, Trackrunner.Runtime.MockTool
 config :trackrunner, :planner_real_calls, false
