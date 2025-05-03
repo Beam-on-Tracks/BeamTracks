@@ -134,6 +134,15 @@ defmodule TestSupport do
           {:ok, pid}
       end
 
+    # Also ensure dynamic workflow cache
+    case Process.whereis(:dynamic_workflow) do
+      nil ->
+        Cachex.start_link(name: :dynamic_workflow, default_ttl: :timer.minutes(30))
+
+      pid ->
+        {:ok, pid}
+    end
+
     # Verify ETS table was created
     new_table_exists = :ets.info(:workflow_cache) != :undefined
     Logger.debug("workflow_cache ETS table exists after setup: #{new_table_exists}")

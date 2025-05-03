@@ -10,11 +10,11 @@ defmodule Trackrunner.Planner.Executor do
   """
   alias Trackrunner.Channel.WarmPool
   alias Trackrunner.Planner.DAGRegistry
+  alias Trackrunner.Planner.WorkflowCache
   @tool_runtime Application.compile_env(:trackrunner, :tool_runtime, Trackrunner.Runtime.Tool)
   require Logger
   @max_attempts 4
   @base_backoff 100
-  @dynamic_ttl :timer.minutes(30)
 
   @doc "Run workflow by ID with no initial input (uses node args or dynamic inputs)."
   @spec run(String.t()) :: {:ok, any()} | {:error, term()}
@@ -30,27 +30,7 @@ defmodule Trackrunner.Planner.Executor do
         {:error, :no_workflow_dag}
 
       dag ->
-        steps_result =
-          case Cachex.get(:workflow_cache, workflow_id) do
-            {:ok, %{"path" => tool_steps}} ->
-              {:ok, tool_steps}
-
-            # For testing, we want to proceed even if there's a cache error
-            {:error, :no_cache} ->
-              # For this specific error, try to continue with DAG lookup instead of failing
-              lookup_workflow(workflow_id, dag)
-
-            # Handle dynamic workflows
-            {:ok, nil} ->
-              lookup_workflow(workflow_id, dag)
-
-            # Other Cachex errors
-            {:error, reason} ->
-              {:error, {:cache_error, reason}}
-
-            _ ->
-              lookup_workflow(workflow_id, dag)
-          end
+        steps_result = WorkflowCache.get_workflow(workflow_id, dag, &lookup_workflow/2)
 
         case steps_result do
           {:ok, tool_steps} -> run_steps(tool_steps, input)

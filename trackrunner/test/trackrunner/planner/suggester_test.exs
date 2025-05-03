@@ -5,6 +5,7 @@ defmodule Trackrunner.Planner.SuggesterTest do
 
   alias Trackrunner.Planner.Suggester
   alias Trackrunner.Planner.DAGRegistry
+
   import TestSupport
 
   setup do

@@ -1,6 +1,7 @@
 defmodule Trackrunner.Planner.DAGRegistry do
   use Agent
 
+  alias Trackrunner.Planner.WorkflowCache
   @initial_state %{current: nil, previous: nil}
 
   def start_link(_opts) do
@@ -9,6 +10,10 @@ defmodule Trackrunner.Planner.DAGRegistry do
 
   @doc "Register a new active DAG (atomically saving the old one)."
   def register_active_dag(dag) do
+    # Ensure dag has a paths key, defaulting to empty list if missing
+    paths = Map.get(dag, :paths, [])
+    WorkflowCache.reset_static_workflows(paths)
+
     Agent.update(__MODULE__, fn state ->
       %{current: dag, previous: state.current}
     end)

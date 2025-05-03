@@ -26,6 +26,12 @@ defmodule Trackrunner.Application do
       Trackrunner.FleetScoreCache,
       Trackrunner.Channel.AgentChannelManager,
       Trackrunner.Channel.WarmPool,
+      Supervisor.child_spec({Cachex, name: :workflow_cache}, id: :workflow_cache),
+      # dynamic workflows (expire after 30 minutes)
+      Supervisor.child_spec(
+        {Cachex, name: :dynamic_workflow, default_ttl: :timer.minutes(30)},
+        id: :dynamic_workflow
+      ),
       Trackrunner.Planner.DAGRegistry
     ]
 
