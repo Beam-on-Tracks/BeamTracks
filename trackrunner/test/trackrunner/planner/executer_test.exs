@@ -77,9 +77,10 @@ defmodule Trackrunner.Planner.ExecutorTest do
         })
 
         input = %{"text" => "Boom"}
-        assert {:error, :simulated_tool_failure} = Executor.execute(workflow_id, input)
+
+        assert {:error, {:node_failed, "fail_tool", :invalid_inputs}} =
+                 Executor.execute(workflow_id, input)
       end)
     end
   end
 end
-

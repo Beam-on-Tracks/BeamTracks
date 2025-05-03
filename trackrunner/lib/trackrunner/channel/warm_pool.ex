@@ -4,59 +4,43 @@ defmodule Trackrunner.Channel.WarmPool do
   Tracks agent_id → socket_pid mapping.
   """
 
-  use GenServer
-  require Logger
+  # ← this line brings in child_spec/1
+  use Agent
+  @name __MODULE__
 
   ## Public API
 
   def start_link(_opts) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    Agent.start_link(fn -> %{} end, name: @name)
+  end
+
+  @doc "Register an agent module for execution tests or in-memory dispatch."
+  def register_agent(agent_id, module) when is_binary(agent_id) and is_atom(module) do
+    Agent.update(@name, &Map.put(&1, agent_id, module))
   end
 
   @doc "Mark an agent as connected, storing its socket PID."
   def mark_connected(agent_id, socket_pid) do
-    GenServer.cast(__MODULE__, {:mark_connected, agent_id, socket_pid})
+    Agent.update(@name, &Map.put(&1, agent_id, socket_pid))
   end
 
   @doc "Remove an agent from the warm pool."
   def mark_disconnected(agent_id) do
-    GenServer.cast(__MODULE__, {:mark_disconnected, agent_id})
+    Agent.update(@name, &Map.delete(&1, agent_id))
   end
 
   @doc "Fetch the current socket PID for a given agent, if any."
   def lookup_socket(agent_id) do
-    GenServer.call(__MODULE__, {:lookup, agent_id})
+    Agent.get(@name, &Map.get(&1, agent_id))
   end
 
   @doc "Returns full state, mainly for debugging."
   def debug_state do
-    GenServer.call(__MODULE__, :debug_state)
+    Agent.get(@name, & &1)
   end
 
-  ## Server Callbacks
-
-  @impl true
-  def init(_init_arg), do: {:ok, %{}}
-
-  @impl true
-  def handle_cast({:mark_connected, agent_id, pid}, state) do
-    Logger.info("📡 Warm pool: #{agent_id} connected")
-    {:noreply, Map.put(state, agent_id, pid)}
-  end
-
-  @impl true
-  def handle_cast({:mark_disconnected, agent_id}, state) do
-    Logger.info("❌ Warm pool: #{agent_id} disconnected")
-    {:noreply, Map.delete(state, agent_id)}
-  end
-
-  @impl true
-  def handle_call({:lookup, agent_id}, _from, state) do
-    {:reply, Map.get(state, agent_id), state}
-  end
-
-  @impl true
-  def handle_call(:debug_state, _from, state) do
-    {:reply, state, state}
+  @doc "Clear out all registered agents (for tests or full reset)"
+  def clear do
+    Agent.update(@name, fn _ -> %{} end)
   end
 end

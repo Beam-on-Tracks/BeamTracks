@@ -25,7 +25,8 @@ defmodule Trackrunner.Application do
       {Trackrunner.Tool.Registry, []},
       Trackrunner.FleetScoreCache,
       Trackrunner.Channel.AgentChannelManager,
-      Trackrunner.Channel.WarmPool
+      Trackrunner.Channel.WarmPool,
+      Trackrunner.Planner.DAGRegistry
     ]
 
     opts = [strategy: :one_for_one, name: Trackrunner.Supervisor]
