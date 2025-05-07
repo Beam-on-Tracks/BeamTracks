@@ -21,10 +21,32 @@ defmodule TrackrunnerWeb.PingController do
       agent_channels: parse_channels(Map.get(params, "agent_channels", []))
     }
 
+    warning_msg =
+      if node_data.public_tools do
+        msg = "Agent #{agent_id} pinged without any public tools"
+        Logger.warn(msg)
+        msg
+      else
+        nil
+      end
+
     Logger.debug("REGISTER DATA: #{inspect(node_data)}")
 
     case Trackrunner.Registry.register_node(agent_id, node_data) do
       {:ok, %{uid: uid}} = ok ->
+        # broadcast this ping out to any CLI watchers
+        TrackrunnerWeb.Endpoint.broadcast!(
+          "cli:ping",
+          "agent:ping",
+          %{
+            agent_id: agent_id,
+            uid: uid,
+            ts: DateTime.utc_now(),
+            public_tools: Map.keys(node_data.public_tools),
+            private_tools: Map.keys(node_data.private_tools)
+          }
+        )
+
         AgentChannelManager.register_channels(
           agent_id,
           uid,

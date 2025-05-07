@@ -40,51 +40,46 @@ defmodule Trackrunner.Agent.Fleet do
   If a node for the same agent_id and tool_id is already started,
   it’s treated as success.
   """
-  @spec add_node(
-          agent_id :: String.t(),
-          data :: %{
-            ip: String.t(),
-            public_tools: map(),
-            private_tools: map(),
-            tool_dependencies: map(),
-            agent_channels: [Trackrunner.Channel.WebsocketContract.t()]
-          }
-        ) :: {:ok, %{uid: non_neg_integer()}} | {:error, any()}
   def add_node(agent_id, data) do
     uid = System.unique_integer([:positive])
-    caller = self()
-
-    # Pick the first public tool as the tool_id for registration key
-    [tool_id | _] = Map.keys(data.public_tools)
-    registry_key = {agent_id, tool_id}
 
     enriched_data = Map.put(data, :agent_id, agent_id)
     child_spec = {AgentNode, {uid, enriched_data}}
 
-    # Try to start; ignore if already started
+    # 1. Always start the node (or ignore if already started)
     case DynamicSupervisor.start_child(Trackrunner.FleetSupervisor, child_spec) do
-      {:ok, _child_pid} ->
+      {:ok, _pid} ->
         :ok
 
       {:error, {:already_started, _pid}} ->
-        Logger.debug("AgentNode already started for #{inspect(registry_key)}")
-        :ok
+        Logger.debug("AgentNode already started for #{agent_id}")
 
       {:error, reason} ->
         IO.warn("❌ start_child failed: #{inspect(reason)}")
         {:error, :fleet_not_found}
     end
 
-    # Wait for registry registration
-    case wait_until_registered(registry_key, 10) do
-      {:ok, _pid} ->
-        Logger.debug("📦 Node registered for #{agent_id} (tool: #{tool_id}) uid=#{uid}")
+    # 2. If there are no public tools, skip the registry wait and succeed immediately
+    case Map.keys(data.public_tools) do
+      [] ->
+        Logger.warn(
+          "Agent #{agent_id} pinged without public tools—node started without registration"
+        )
 
         {:ok, %{uid: uid}}
 
-      {:error, :timeout} ->
-        IO.warn("❌ add_node registration timeout for #{inspect(registry_key)}")
-        {:error, :fleet_not_found}
+      [tool_id | _] ->
+        registry_key = {agent_id, tool_id}
+
+        # 3. Otherwise wait for it to register
+        case wait_until_registered(registry_key, 10) do
+          {:ok, _pid} ->
+            {:ok, %{uid: uid}}
+
+          {:error, :timeout} ->
+            IO.warn("❌ add_node registration timeout for #{inspect(registry_key)}")
+            {:error, :fleet_not_found}
+        end
     end
   end
 

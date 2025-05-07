@@ -4,7 +4,8 @@ defmodule Trackrunner.Registry do
   routing ping requests, and facilitating tool lookups.
   """
 
-  alias Trackrunner.Agent.Fleet
+  alias Trackrunner.Agent.Fleet, as: AgentFleet
+  alias Trackrunner.Channel.AgentChannelManager
   require Logger
 
   @spec register_node(String.t(), %{
@@ -20,11 +21,10 @@ defmodule Trackrunner.Registry do
 
     with {:ok, %{uid: uid}} <- AgentFleet.add_node(agent_id, node_data) do
       # Register channels AFTER node is up
-      Trackrunner.AgentChannelManager.register_channels(
+      AgentChannelManager.register_channels(
         agent_id,
         uid,
-        node_data.agent_channels,
-        node_data.ip
+        node_data.agent_channels
       )
 
       {:ok, %{uid: uid}}
@@ -36,7 +36,7 @@ defmodule Trackrunner.Registry do
   @doc "Lookup a tool URL for a given agent"
   @spec lookup_tool(String.t(), String.t()) :: {:ok, String.t()} | :not_found
   def lookup_tool(agent_id, tool_name) do
-    case Fleet.find_tool(agent_id, tool_name) do
+    case AgentFleet.find_tool(agent_id, tool_name) do
       {:ok, url} -> {:ok, url}
       _ -> :not_found
     end
