@@ -21,8 +21,6 @@ RUN curl -L \
     mv gleam /usr/local/bin/gleam && \
     rm gleam.tar.gz
 
-# required for docker cli
-RUN docker pull registry.dagger.io/engine:v0.18.6
 # Install Dagger CLI into /usr/local/bin
 RUN curl -L https://dl.dagger.io/dagger/install.sh | sh -s -- -b /usr/local/bin
 
