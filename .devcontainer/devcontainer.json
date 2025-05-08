@@ -31,7 +31,7 @@
         ]
       }
     }
-  }
+  },
   "extensions": [
     "ms-python.python",
     "ms-vscode-remote.remote-containers",
