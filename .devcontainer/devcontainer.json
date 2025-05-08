@@ -21,6 +21,17 @@
       "zsh": { "path": "/usr/bin/zsh" }
     }
   },
+  "customizations": {
+    "codespaces": {
+      "prebuilds": {
+        "branches": ["main"],              // which branches to auto‑prebuild
+        "pullRequests": { "branches": ["main"] }, // which PRs
+        "secrets": [                       // any Codespace secrets you need
+          "DAGGER_TOKEN", "MIX_ENV"
+        ]
+      }
+    }
+  }
   "extensions": [
     "ms-python.python",
     "ms-vscode-remote.remote-containers",
