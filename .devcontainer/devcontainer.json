@@ -13,7 +13,7 @@
     "DAGGER_ENGINE": "containerd"
   },
   // Open the entire repo as the workspace
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspaces",
   "settings": {
     // Use zsh as the integrated terminal in VS Code
     "terminal.integrated.defaultProfile.linux": "zsh",

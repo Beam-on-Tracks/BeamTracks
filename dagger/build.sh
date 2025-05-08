@@ -4,6 +4,7 @@
 export DAGGER_NO_PROGRESS=1
 export DAGGER_NO_INTERACTIVE=1
 export DAGGER_NO_NAG=1
+set -e        # exit immediately if any command exits non-zero
 
 echo "Building Trackrunner..."
 dagger call container \
