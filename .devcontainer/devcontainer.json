@@ -10,12 +10,12 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "remoteEnv": {
-    "DAGGER_ENGINE": "containerd"
+    "DAGGER_ENGINE": "containerd",
+    "SECRET_KEY_BASE": "DEVKEY000000000000000000000000000000000000000000000000000000",
+    "MIX_ENV": "dev"
   },
-  // Open the entire repo as the workspace
   "workspaceFolder": "/workspaces",
   "settings": {
-    // Use zsh as the integrated terminal in VS Code
     "terminal.integrated.defaultProfile.linux": "zsh",
     "terminal.integrated.profiles.linux": {
       "zsh": { "path": "/usr/bin/zsh" }
@@ -24,23 +24,19 @@
   "customizations": {
     "codespaces": {
       "prebuilds": {
-        "branches": ["main"],              // which branches to auto‑prebuild
-        "pullRequests": { "branches": ["main"] }, // which PRs
-        "secrets": [                       // any Codespace secrets you need
-          "DAGGER_TOKEN", "MIX_ENV"
-        ]
+        "branches": ["main"],
+        "pullRequests": { "branches": ["main"] },
+        "secrets": ["DAGGER_TOKEN", "MIX_ENV"]
       }
     }
   },
   "extensions": [
     "ms-python.python",
     "ms-vscode-remote.remote-containers",
-    "golang.go"
+    "golang.go",
+    "jakebecker.elixir-ls"
   ],
-  // Forward ports for each app
   "forwardPorts": [4000, 4001, 4002],
-  // When container starts, install deps for all apps
   "postCreateCommand": "./.devcontainer/setup.sh",
   "remoteUser": "vscode"
 }
-
